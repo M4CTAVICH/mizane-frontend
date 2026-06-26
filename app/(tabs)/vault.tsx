@@ -7,14 +7,38 @@ import {
   StyleSheet,
   Platform,
   TextInput,
+  ImageBackground,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
 import { colors, spacing, radius, typography, textScale } from "../../constants/tokens";
 import { useVaultStore } from "../../store/vaultStore";
+import { VAULT_HERO_IMAGE } from "../../constants/assets";
 import ArabicText from "../../components/shared/ArabicText";
 import { LiquidGlassContainer } from "../../components/ui/LiquidGlassContainer";
 import DocumentCard from "../../components/vault/DocumentCard";
-import StatusPill from "../../components/ui/StatusPill";
+
+// Western digits → Arabic-Indic, so metrics read natively in the RTL layout.
+function toArabicDigits(value: number | string): string {
+  const map = ["٠", "١", "٢", "٣", "٤", "٥", "٦", "٧", "٨", "٩"];
+  return String(value).replace(/[0-9]/g, (d) => map[Number(d)]);
+}
+
+interface SummaryTagProps {
+  count: number;
+  label: string;
+  color: string;
+}
+
+function SummaryTag({ count, label, color }: SummaryTagProps) {
+  return (
+    <View style={[styles.tag, { backgroundColor: `${color}1F` }]}>
+      <ArabicText size="caption" weight="semibold" color={color} style={styles.tagText}>
+        {`${toArabicDigits(count)} ${label}`}
+      </ArabicText>
+    </View>
+  );
+}
 
 export default function VaultScreen() {
   const documents = useVaultStore((s) => s.documents);
@@ -31,41 +55,33 @@ export default function VaultScreen() {
   const expiring = documents.filter((d) => d.status === "expiring").length;
   const expired = documents.filter((d) => d.status === "expired").length;
 
-  return (
-    <View style={styles.container}>
-      {/* ── Floating glass header pill (functional layer) ─────────── */}
-      <View style={styles.headerWrap}>
-        <LiquidGlassContainer radius={radius.lg} padding={spacing.md}>
-          <View style={styles.headerRow}>
-            <TouchableOpacity style={styles.addBtn} activeOpacity={0.8}>
-              <Ionicons name="add" size={24} color={colors.gold} />
-            </TouchableOpacity>
-            <View style={{ alignItems: "flex-end" }}>
-              <Text style={textScale.label}>VAULT</Text>
-              <ArabicText
-                size="heading"
-                weight="semibold"
-                color={colors.textPrimary}
-                style={styles.headerTitle}
-              >
-                خزينتي
-              </ArabicText>
+  const listHeader = (
+    <View>
+      {/* Hero summary metric over a marble backdrop */}
+      <View style={styles.hero}>
+        <ImageBackground
+          source={VAULT_HERO_IMAGE}
+          style={styles.heroBg}
+          imageStyle={styles.heroImage}
+        >
+          <LinearGradient
+            colors={["rgba(5,5,6,0.55)", "rgba(5,5,6,0.9)"]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={StyleSheet.absoluteFill}
+          />
+          <View style={styles.heroContent}>
+            <ArabicText size="caption" color={colors.textMuted} style={styles.heroLabel}>
+              إجمالي الوثائق المحفوظة
+            </ArabicText>
+            <Text style={styles.heroMetric}>{toArabicDigits(documents.length)}</Text>
+            <View style={styles.heroTags}>
+              <SummaryTag count={valid} label="صالح" color={colors.safe} />
+              <SummaryTag count={expiring} label="ينتهي" color={colors.caution} />
+              <SummaryTag count={expired} label="منتهٍ" color={colors.danger} />
             </View>
           </View>
-        </LiquidGlassContainer>
-      </View>
-
-      {/* Status summary (transparent — fluid mesh shows through) */}
-      <View style={styles.summaryBar}>
-        <View style={styles.summaryItem}>
-          <StatusPill status="valid" label={`صالح · ${valid}`} />
-        </View>
-        <View style={styles.summaryItem}>
-          <StatusPill status="expiring" label={`ينتهي · ${expiring}`} />
-        </View>
-        <View style={styles.summaryItem}>
-          <StatusPill status="expired" label={`منتهي · ${expired}`} />
-        </View>
+        </ImageBackground>
       </View>
 
       {/* Search — active input field → Liquid Glass (functional layer) */}
@@ -89,6 +105,47 @@ export default function VaultScreen() {
         </LiquidGlassContainer>
       </View>
 
+      {/* Section header */}
+      <View style={styles.sectionHeader}>
+        <TouchableOpacity hitSlop={8} activeOpacity={0.7}>
+          <ArabicText size="caption" weight="semibold" color={colors.gold}>
+            عرض الكل
+          </ArabicText>
+        </TouchableOpacity>
+        <ArabicText weight="semibold" color={colors.textPrimary} style={styles.sectionTitle}>
+          الوثائق الأخيرة
+        </ArabicText>
+      </View>
+    </View>
+  );
+
+  return (
+    <View style={styles.container}>
+      {/* ── Header (title + gold add action) ─────────────────────── */}
+      <View style={styles.headerWrap}>
+        <View style={styles.headerRow}>
+          <TouchableOpacity style={styles.addBtn} activeOpacity={0.85}>
+            <LinearGradient
+              colors={[colors.goldGradTop, colors.goldGradBottom]}
+              start={{ x: 0.5, y: 0 }}
+              end={{ x: 0.5, y: 1 }}
+              style={StyleSheet.absoluteFill}
+            />
+            <Ionicons name="add" size={24} color={colors.inkBlue} />
+          </TouchableOpacity>
+          <View style={{ alignItems: "flex-end" }}>
+            <Text style={textScale.label}>VAULT</Text>
+            <ArabicText
+              weight="semibold"
+              color={colors.textPrimary}
+              style={styles.headerTitle}
+            >
+              خزينتي
+            </ArabicText>
+          </View>
+        </View>
+      </View>
+
       {/* Document list (transparent canvas) */}
       <FlatList
         data={filtered}
@@ -96,6 +153,7 @@ export default function VaultScreen() {
         style={styles.list}
         contentContainerStyle={styles.listContent}
         showsVerticalScrollIndicator={false}
+        ListHeaderComponent={listHeader}
         renderItem={({ item }) => <DocumentCard document={item} />}
         ListEmptyComponent={
           <View style={styles.emptyState}>
@@ -113,10 +171,10 @@ export default function VaultScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "transparent" },
 
-  // Floating glass header
+  // Header
   headerWrap: {
     paddingTop: Platform.OS === "ios" ? 56 : 28,
-    paddingHorizontal: spacing.md,
+    paddingHorizontal: spacing.lg,
     paddingBottom: spacing.sm,
   },
   headerRow: {
@@ -124,28 +182,54 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "center",
   },
-  headerTitle: { fontSize: 24, lineHeight: 30 },
+  headerTitle: { fontSize: 28, lineHeight: 40 },
   addBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: colors.gold,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    overflow: "hidden",
     alignItems: "center",
     justifyContent: "center",
   },
 
-  summaryBar: {
-    flexDirection: "row-reverse",
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.sm,
-    gap: spacing.sm,
+  // Hero metric
+  hero: {
+    marginHorizontal: spacing.md,
+    marginTop: spacing.xs,
+    borderRadius: radius.xl,
+    overflow: "hidden",
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: colors.cardBorder,
   },
-  summaryItem: {},
+  heroBg: { width: "100%", minHeight: 148, justifyContent: "flex-end" },
+  heroImage: { resizeMode: "cover" },
+  heroContent: {
+    padding: spacing.md,
+    alignItems: "flex-end",
+  },
+  heroLabel: { fontSize: 12.5 },
+  heroMetric: {
+    ...textScale.superMetric,
+    fontSize: 44,
+    lineHeight: 50,
+    marginTop: spacing.xs,
+  },
+  heroTags: {
+    flexDirection: "row-reverse",
+    gap: spacing.xs,
+    marginTop: spacing.sm,
+  },
+  tag: {
+    borderRadius: radius.full,
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+  },
+  tagText: { fontSize: 11, lineHeight: 16 },
 
+  // Search
   searchWrap: {
     marginHorizontal: spacing.md,
-    marginVertical: spacing.sm,
+    marginTop: spacing.md,
   },
   searchRow: {
     flexDirection: "row-reverse",
@@ -160,13 +244,25 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontFamily: typography.fontArabic,
     color: colors.textPrimary,
+    textAlign: "right",
   },
+
+  // Section header
+  sectionHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginHorizontal: spacing.md,
+    marginTop: spacing.lg,
+    marginBottom: spacing.sm,
+  },
+  sectionTitle: { fontSize: 17 },
 
   list: { flex: 1, backgroundColor: "transparent" },
   listContent: {
-    padding: spacing.md,
-    gap: spacing.sm,
+    paddingHorizontal: spacing.md,
     paddingBottom: 120, // clear the floating glass tab bar
+    gap: spacing.sm,
   },
   emptyState: {
     alignItems: "center",

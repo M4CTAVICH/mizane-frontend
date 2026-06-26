@@ -20,6 +20,10 @@ import {
   IBMPlexSans_600SemiBold,
 } from "@expo-google-fonts/ibm-plex-sans";
 import { IBMPlexMono_400Regular } from "@expo-google-fonts/ibm-plex-mono";
+import {
+  ArefRuqaa_400Regular,
+  ArefRuqaa_700Bold,
+} from "@expo-google-fonts/aref-ruqaa";
 
 SplashScreen.preventAutoHideAsync();
 
@@ -53,6 +57,8 @@ export default function RootLayout() {
     "IBMPlexSans-Medium": IBMPlexSans_500Medium,
     "IBMPlexSans-SemiBold": IBMPlexSans_600SemiBold,
     "IBMPlexMono-Regular": IBMPlexMono_400Regular,
+    "ArefRuqaa-Regular": ArefRuqaa_400Regular,
+    "ArefRuqaa-Bold": ArefRuqaa_700Bold,
   });
 
   useEffect(() => {

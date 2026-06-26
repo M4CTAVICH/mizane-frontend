@@ -6,6 +6,7 @@ import {
   ViewStyle,
   TextStyle,
 } from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
 import { colors, radius, spacing, shadow } from "../../constants/tokens";
 import ArabicText from "../shared/ArabicText";
 
@@ -61,6 +62,14 @@ export default function Button({
       disabled={isDisabled}
       activeOpacity={0.8}
     >
+      {variant === "primary" ? (
+        <LinearGradient
+          colors={[colors.goldGradTop, colors.goldGradBottom]}
+          start={{ x: 0.5, y: 0 }}
+          end={{ x: 0.5, y: 1 }}
+          style={StyleSheet.absoluteFill}
+        />
+      ) : null}
       {loading ? (
         <ActivityIndicator
           size="small"
@@ -81,7 +90,8 @@ export default function Button({
 
 const styles = StyleSheet.create({
   base: {
-    borderRadius: radius.md,
+    borderRadius: radius.xl,
+    overflow: "hidden",
     alignItems: "center",
     justifyContent: "center",
     flexDirection: "row",

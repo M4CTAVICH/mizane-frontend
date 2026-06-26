@@ -1,103 +1,137 @@
-import React from "react";
-import { View, FlatList, StyleSheet, Platform } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
-import { colors, radius, spacing } from "../../constants/tokens";
+import React, { useEffect, useRef } from "react";
+import {
+  View,
+  ScrollView,
+  Animated,
+  StyleSheet,
+  Platform,
+} from "react-native";
+import { colors } from "../../constants/tokens";
 import ArabicText from "../../components/shared/ArabicText";
-import { LiquidGlassContainer } from "../../components/ui/LiquidGlassContainer";
 
-type ActivityCategory = "deadline" | "letter" | "proof" | "vault" | "procedure";
+type Kind = "secured" | "reminder" | "document" | "message" | "procedure";
 
-interface ActivityItem {
-  id: string;
-  category: ActivityCategory;
-  title: string;
-  subtitle: string;
-  date: Date;
-}
-
-const ICON_MAP: Record<ActivityCategory, { icon: string; color: string }> = {
-  deadline: { icon: "alarm-outline", color: colors.danger },
-  letter: { icon: "mail-outline", color: colors.gold },
-  proof: { icon: "shield-checkmark-outline", color: colors.safe },
-  vault: { icon: "document-outline", color: colors.gold },
-  procedure: { icon: "list-outline", color: colors.caution },
+const KIND_COLOR: Record<Kind, string> = {
+  secured: "#5FB38A",
+  reminder: "#D4756B",
+  document: "#E0B64D",
+  message: "#D8A64A",
+  procedure: "#E08A3C",
 };
 
-const DEMO_ACTIVITIES: ActivityItem[] = [
+interface ActivityEvent {
+  id: string;
+  kind: Kind;
+  title: string;
+  sub: string;
+  time: string;
+  live?: boolean;
+}
+
+interface Group {
+  label: string;
+  events: ActivityEvent[];
+}
+
+const GROUPS: Group[] = [
   {
-    id: "act-1",
-    category: "proof",
-    title: "تم تثبيت عقد الميلاد",
-    subtitle: "OTS-demo_anchor_1",
-    date: new Date(Date.now() - 1000 * 60 * 30),
+    label: "اليوم",
+    events: [
+      {
+        id: "1",
+        kind: "secured",
+        title: "تم تثبيت عقد الميلاد",
+        sub: "محفوظ ومُشفّر في الخزينة",
+        time: "٣٢ دقيقة",
+        live: true,
+      },
+      {
+        id: "2",
+        kind: "reminder",
+        title: "موعد شهادة الإقامة",
+        sub: "تنتهي صلاحيتها خلال ١٢ يوم",
+        time: "٣ ساعات",
+      },
+    ],
   },
   {
-    id: "act-2",
-    category: "deadline",
-    title: "موعد شهادة الإقامة",
-    subtitle: "تنتهي خلال 12 يوم",
-    date: new Date(Date.now() - 1000 * 60 * 60 * 3),
-  },
-  {
-    id: "act-3",
-    category: "vault",
-    title: "تمت إضافة الوثيقة العائلية",
-    subtitle: "الوثيقة العائلية · صالحة",
-    date: new Date(Date.now() - 1000 * 60 * 60 * 24),
-  },
-  {
-    id: "act-4",
-    category: "letter",
-    title: "رسالة شكوى عمالية",
-    subtitle: "تم التوليد والحفظ",
-    date: new Date(Date.now() - 1000 * 60 * 60 * 48),
-  },
-  {
-    id: "act-5",
-    category: "procedure",
-    title: "بدأت إجراء تجديد جواز السفر",
-    subtitle: "الخطوة 1 من 4",
-    date: new Date(Date.now() - 1000 * 60 * 60 * 72),
+    label: "هذا الأسبوع",
+    events: [
+      {
+        id: "3",
+        kind: "document",
+        title: "تمت إضافة الوثيقة العائلية",
+        sub: "سارية المفعول",
+        time: "أمس",
+      },
+      {
+        id: "4",
+        kind: "message",
+        title: "رسالة شكوى عمالية",
+        sub: "تم التوليد والحفظ",
+        time: "يومان",
+      },
+      {
+        id: "5",
+        kind: "procedure",
+        title: "بدأت إجراء تجديد جواز السفر",
+        sub: "الخطوة ١ من ٤",
+        time: "٣ أيام",
+      },
+    ],
   },
 ];
 
-function formatDate(d: Date): string {
-  const now = new Date();
-  const diff = now.getTime() - d.getTime();
-  const minutes = Math.floor(diff / 60000);
-  const hours = Math.floor(diff / 3600000);
-  const days = Math.floor(diff / 86400000);
-  if (minutes < 60) return `منذ ${minutes} دقيقة`;
-  if (hours < 24) return `منذ ${hours} ساعة`;
-  return `منذ ${days} يوم`;
+/** Pulsing ring for a live timeline node. */
+function PulseRing({ color }: { color: string }) {
+  const anim = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    const loop = Animated.loop(
+      Animated.timing(anim, { toValue: 1, duration: 1800, useNativeDriver: true })
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [anim]);
+  return (
+    <Animated.View
+      pointerEvents="none"
+      style={[
+        styles.pulseRing,
+        {
+          borderColor: color,
+          opacity: anim.interpolate({ inputRange: [0, 1], outputRange: [0.6, 0] }),
+          transform: [{ scale: anim.interpolate({ inputRange: [0, 1], outputRange: [1, 2] }) }],
+        },
+      ]}
+    />
+  );
 }
 
-function ActivityRow({ item, isLast }: { item: ActivityItem; isLast: boolean }) {
-  const meta = ICON_MAP[item.category];
+function EventRow({ event, isLast }: { event: ActivityEvent; isLast: boolean }) {
+  const color = KIND_COLOR[event.kind];
   return (
-    <View style={styles.row}>
-      {/* Timeline column */}
-      <View style={styles.timelineCol}>
-        <View style={[styles.dot, { backgroundColor: meta.color }]} />
-        {!isLast && <View style={styles.line} />}
+    <View style={[styles.eventRow, !isLast && styles.eventRowDivider]}>
+      <View style={styles.eventContent}>
+        <View style={styles.eventTextCol}>
+          <ArabicText weight="semibold" color={colors.textPrimary} style={styles.title} numberOfLines={1}>
+            {event.title}
+          </ArabicText>
+          <ArabicText color={colors.textMuted} style={styles.sub} numberOfLines={1}>
+            {event.sub}
+          </ArabicText>
+        </View>
+        <ArabicText color={colors.textMuted} style={styles.time}>
+          {event.time}
+        </ArabicText>
       </View>
 
-      {/* Content */}
-      <View style={styles.rowContent}>
-        <View style={[styles.iconCircle, { backgroundColor: `${meta.color}22` }]}>
-          <Ionicons name={meta.icon as any} size={18} color={meta.color} />
-        </View>
-        <View style={styles.rowText}>
-          <ArabicText weight="medium" color={colors.textPrimary} numberOfLines={1}>
-            {item.title}
-          </ArabicText>
-          <ArabicText size="caption" color={colors.textMuted} numberOfLines={1}>
-            {item.subtitle}
-          </ArabicText>
-        </View>
-        <ArabicText size="caption" color={colors.gold} style={styles.dateText}>
-          {formatDate(item.date)}
-        </ArabicText>
+      {/* Node on the rail */}
+      <View style={styles.node}>
+        {event.live ? <PulseRing color={color} /> : null}
+        <View style={[styles.dot, { backgroundColor: color }]} />
+        {event.live ? (
+          <View style={[styles.liveRing, { borderColor: color }]} pointerEvents="none" />
+        ) : null}
       </View>
     </View>
   );
@@ -106,108 +140,118 @@ function ActivityRow({ item, isLast }: { item: ActivityItem; isLast: boolean }) 
 export default function ActivityScreen() {
   return (
     <View style={styles.container}>
-      {/* Floating glass header pill (functional layer) */}
-      <View style={styles.headerWrap}>
-        <LiquidGlassContainer radius={radius.lg} padding={spacing.md}>
-          <View style={styles.headerRow}>
-            <ArabicText size="heading" weight="semibold" color={colors.textPrimary}>
-              النشاط
-            </ArabicText>
-          </View>
-        </LiquidGlassContainer>
-      </View>
-
-      <FlatList
-        data={DEMO_ACTIVITIES}
-        keyExtractor={(item) => item.id}
-        style={styles.list}
-        contentContainerStyle={styles.listContent}
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
-        renderItem={({ item, index }) => (
-          <ActivityRow item={item} isLast={index === DEMO_ACTIVITIES.length - 1} />
-        )}
-        ListEmptyComponent={
-          <View style={styles.emptyState}>
-            <Ionicons name="time-outline" size={48} color={colors.ink300} />
-            <ArabicText color={colors.textMuted} style={{ textAlign: "center" }}>
-              لا يوجد نشاط بعد — ابدأ بفحص وثيقة
+      >
+        {/* Header */}
+        <View style={styles.header}>
+          <ArabicText weight="semibold" color={colors.textPrimary} style={styles.h1}>
+            النشاط
+          </ArabicText>
+          <ArabicText color={colors.textMuted} style={styles.subtitle}>
+            خمسة أحداث · آخر تحديث منذ ٣٢ دقيقة
+          </ArabicText>
+        </View>
+
+        {/* Timeline sections */}
+        {GROUPS.map((group) => (
+          <View key={group.label} style={styles.section}>
+            <ArabicText color={colors.textMuted} style={styles.eyebrow}>
+              {group.label}
             </ArabicText>
+            <View style={styles.sectionBody}>
+              <View style={styles.rail} />
+              {group.events.map((e, i) => (
+                <EventRow key={e.id} event={e} isLast={i === group.events.length - 1} />
+              ))}
+            </View>
           </View>
-        }
-      />
+        ))}
+      </ScrollView>
     </View>
   );
 }
 
+// Right-side rail position. The node box sits at right:0 with width 12 (center
+// at right:6); the rail is aligned to that center.
+const NODE_SIZE = 12;
+const RAIL_RIGHT = NODE_SIZE / 2 - 0.5;
+
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "transparent" },
-
-  // Floating glass header
-  headerWrap: {
-    paddingTop: Platform.OS === "ios" ? 56 : 28,
-    paddingHorizontal: spacing.md,
-    paddingBottom: spacing.sm,
+  scroll: { flex: 1 },
+  scrollContent: {
+    paddingHorizontal: 24,
+    paddingTop: Platform.OS === "ios" ? 56 : 32,
+    paddingBottom: 160,
   },
-  headerRow: { alignItems: "flex-end" },
 
-  list: { flex: 1, backgroundColor: "transparent" },
-  listContent: {
-    padding: spacing.md,
-    paddingBottom: 120, // clear the floating glass tab bar
+  // Header
+  header: { alignItems: "flex-end", marginBottom: 36 },
+  h1: { fontSize: 30, lineHeight: 33 },
+  subtitle: { fontSize: 13.5, lineHeight: 20.25, marginTop: 8 },
+
+  // Section
+  section: { marginBottom: 36 },
+  eyebrow: {
+    fontSize: 12,
+    lineHeight: 18,
+    letterSpacing: 1.5,
+    textAlign: "right",
   },
-  row: {
+  sectionBody: { position: "relative", marginTop: 16 },
+  rail: {
+    position: "absolute",
+    right: RAIL_RIGHT,
+    top: 12,
+    bottom: 12,
+    width: 1,
+    backgroundColor: "rgba(255,255,255,0.08)",
+  },
+
+  // Event row
+  eventRow: { position: "relative", paddingRight: 28, paddingBottom: 22.8 },
+  eventRowDivider: {
+    borderBottomWidth: 0.8,
+    borderBottomColor: "rgba(255,255,255,0.05)",
+    marginBottom: 22,
+  },
+  eventContent: {
     flexDirection: "row-reverse",
-    gap: spacing.md,
-    minHeight: 72,
+    alignItems: "flex-start",
+    gap: 16,
   },
-  timelineCol: {
+  eventTextCol: { flex: 1, alignItems: "flex-end" },
+  title: { fontSize: 16, lineHeight: 21.6, textAlign: "right" },
+  sub: { fontSize: 13.5, lineHeight: 20.25, marginTop: 4, textAlign: "right" },
+  time: { fontSize: 12, lineHeight: 18, opacity: 0.65, marginTop: 2 },
+
+  // Node on the rail
+  node: {
+    position: "absolute",
+    right: 0,
+    top: 6,
+    width: NODE_SIZE,
+    height: NODE_SIZE,
     alignItems: "center",
-    width: 16,
-    paddingTop: 4,
+    justifyContent: "center",
   },
-  dot: {
+  dot: { width: 8, height: 8, borderRadius: 4 },
+  liveRing: {
+    position: "absolute",
     width: 12,
     height: 12,
     borderRadius: 6,
-    zIndex: 1,
+    borderWidth: 1.2,
+    opacity: 0.4,
   },
-  line: {
-    flex: 1,
-    width: 2,
-    backgroundColor: colors.ink200,
-    marginTop: 2,
-  },
-  rowContent: {
-    flex: 1,
-    flexDirection: "row-reverse",
-    alignItems: "flex-start",
-    gap: spacing.sm,
-    paddingBottom: spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.ink200,
-  },
-  iconCircle: {
-    width: 40,
-    height: 40,
-    borderRadius: radius.md,
-    alignItems: "center",
-    justifyContent: "center",
-    flexShrink: 0,
-  },
-  rowText: {
-    flex: 1,
-    gap: 2,
-    alignItems: "flex-end",
-  },
-  dateText: {
-    flexShrink: 0,
-    fontSize: 11,
-    textAlign: "right",
-    writingDirection: "ltr",
-  },
-  emptyState: {
-    alignItems: "center",
-    paddingTop: spacing.xxl * 2,
-    gap: spacing.md,
+  pulseRing: {
+    position: "absolute",
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    borderWidth: 1.2,
   },
 });

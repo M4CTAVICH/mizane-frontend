@@ -8,8 +8,6 @@ import {
   Platform,
   TextInput,
 } from "react-native";
-import { BlurView } from "expo-blur";
-import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { colors, spacing, radius, typography, textScale } from "../../constants/tokens";
 import { useVaultStore } from "../../store/vaultStore";
@@ -35,35 +33,26 @@ export default function VaultScreen() {
 
   return (
     <View style={styles.container}>
-      {/* ── Glass header (functional layer) ───────────────────────── */}
-      <View style={styles.header}>
-        <BlurView intensity={50} tint="dark" style={StyleSheet.absoluteFill} />
-        <View style={[StyleSheet.absoluteFill, { backgroundColor: colors.glassFill }]} />
-        <LinearGradient
-          colors={[colors.glassHighlight, "rgba(255,255,255,0.03)", "transparent"]}
-          locations={[0, 0.4, 1]}
-          start={{ x: 0.2, y: 0 }}
-          end={{ x: 0.5, y: 1 }}
-          style={StyleSheet.absoluteFill}
-          pointerEvents="none"
-        />
-        <View style={styles.headerRow}>
-          <TouchableOpacity style={styles.addBtn} activeOpacity={0.8}>
-            <Ionicons name="add" size={24} color={colors.gold} />
-          </TouchableOpacity>
-          <View style={{ alignItems: "flex-end" }}>
-            <Text style={textScale.label}>VAULT</Text>
-            <ArabicText
-              size="heading"
-              weight="semibold"
-              color={colors.textPrimary}
-              style={styles.headerTitle}
-            >
-              خزينتي
-            </ArabicText>
+      {/* ── Floating glass header pill (functional layer) ─────────── */}
+      <View style={styles.headerWrap}>
+        <LiquidGlassContainer radius={radius.lg} padding={spacing.md}>
+          <View style={styles.headerRow}>
+            <TouchableOpacity style={styles.addBtn} activeOpacity={0.8}>
+              <Ionicons name="add" size={24} color={colors.gold} />
+            </TouchableOpacity>
+            <View style={{ alignItems: "flex-end" }}>
+              <Text style={textScale.label}>VAULT</Text>
+              <ArabicText
+                size="heading"
+                weight="semibold"
+                color={colors.textPrimary}
+                style={styles.headerTitle}
+              >
+                خزينتي
+              </ArabicText>
+            </View>
           </View>
-        </View>
-        <View style={styles.headerHairline} />
+        </LiquidGlassContainer>
       </View>
 
       {/* Status summary (transparent — fluid mesh shows through) */}
@@ -124,12 +113,11 @@ export default function VaultScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "transparent" },
 
-  // Glass header
-  header: {
+  // Floating glass header
+  headerWrap: {
     paddingTop: Platform.OS === "ios" ? 56 : 28,
-    paddingBottom: spacing.md,
-    paddingHorizontal: spacing.lg,
-    overflow: "hidden",
+    paddingHorizontal: spacing.md,
+    paddingBottom: spacing.sm,
   },
   headerRow: {
     flexDirection: "row",
@@ -137,14 +125,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   headerTitle: { fontSize: 24, lineHeight: 30 },
-  headerHairline: {
-    position: "absolute",
-    bottom: 0,
-    left: 0,
-    right: 0,
-    height: StyleSheet.hairlineWidth,
-    backgroundColor: colors.glassBorder,
-  },
   addBtn: {
     width: 36,
     height: 36,

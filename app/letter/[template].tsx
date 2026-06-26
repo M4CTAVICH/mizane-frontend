@@ -10,8 +10,6 @@ import {
   Alert,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { BlurView } from "expo-blur";
-import { LinearGradient } from "expo-linear-gradient";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { colors, radius, shadow, spacing, typography, textScale } from "../../constants/tokens";
 import { TEMPLATES } from "../../constants/tokens";
@@ -22,22 +20,13 @@ import ContentCard from "../../components/ui/ContentCard";
 import { LiquidGlassContainer } from "../../components/ui/LiquidGlassContainer";
 import CitationCard from "../../components/assistant/CitationCard";
 
-/** Floating glass header (functional layer) shared across the letter steps. */
+/** Floating glass header pill shared across the letter steps. */
 function GlassHeader({ children }: { children: React.ReactNode }) {
   return (
-    <View style={styles.header}>
-      <BlurView intensity={50} tint="dark" style={StyleSheet.absoluteFill} />
-      <View style={[StyleSheet.absoluteFill, { backgroundColor: colors.glassFill }]} />
-      <LinearGradient
-        colors={[colors.glassHighlight, "rgba(255,255,255,0.03)", "transparent"]}
-        locations={[0, 0.4, 1]}
-        start={{ x: 0.2, y: 0 }}
-        end={{ x: 0.5, y: 1 }}
-        style={StyleSheet.absoluteFill}
-        pointerEvents="none"
-      />
-      <View style={styles.headerRow}>{children}</View>
-      <View style={styles.headerHairline} />
+    <View style={styles.headerWrap}>
+      <LiquidGlassContainer radius={radius.lg} padding={spacing.md}>
+        <View style={styles.headerRow}>{children}</View>
+      </LiquidGlassContainer>
     </View>
   );
 }
@@ -284,23 +273,15 @@ export default function LetterScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "transparent" },
-  header: {
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
-    overflow: "hidden",
+  headerWrap: {
+    paddingHorizontal: spacing.md,
+    paddingTop: spacing.sm,
+    paddingBottom: spacing.sm,
   },
   headerRow: {
     flexDirection: "row-reverse",
     alignItems: "center",
     justifyContent: "space-between",
-  },
-  headerHairline: {
-    position: "absolute",
-    bottom: 0,
-    left: 0,
-    right: 0,
-    height: StyleSheet.hairlineWidth,
-    backgroundColor: colors.glassBorder,
   },
   templateGrid: {
     padding: spacing.md,

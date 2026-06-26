@@ -6,27 +6,22 @@ import {
   StyleSheet,
   Platform,
 } from "react-native";
-import { BlurView } from "expo-blur";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { colors, shadow, typography } from "../../constants/tokens";
+import { LiquidGlassContainer } from "../../components/ui/LiquidGlassContainer";
 
 /** Floating Liquid Glass background for the tab bar (functional layer). */
 function GlassTabBackground() {
   return (
-    <View style={styles.glassClip}>
-      <BlurView intensity={50} tint="dark" style={StyleSheet.absoluteFill} />
-      <View style={[StyleSheet.absoluteFill, { backgroundColor: colors.glassFill }]} />
-      {/* Specular "liquid" light catch along the top edge */}
-      <LinearGradient
-        colors={[colors.glassHighlight, "rgba(255,255,255,0.04)", "transparent"]}
-        locations={[0, 0.2, 0.6]}
-        start={{ x: 0.2, y: 0 }}
-        end={{ x: 0.5, y: 1 }}
-        style={StyleSheet.absoluteFill}
-        pointerEvents="none"
-      />
-    </View>
+    <LiquidGlassContainer
+      style={StyleSheet.absoluteFill}
+      radius={TAB_BAR_RADIUS}
+      padding={0}
+      intensity={50}
+    >
+      <View style={StyleSheet.absoluteFill} />
+    </LiquidGlassContainer>
   );
 }
 
@@ -59,6 +54,7 @@ export default function TabsLayout() {
 
   return (
     <Tabs
+      sceneContainerStyle={{ backgroundColor: "transparent" }}
       screenOptions={{
         headerShown: false,
         tabBarStyle: styles.tabBar,
@@ -67,7 +63,6 @@ export default function TabsLayout() {
         tabBarInactiveTintColor: colors.textMuted,
         tabBarLabelStyle: styles.tabLabel,
         tabBarItemStyle: styles.tabItem,
-        sceneStyle: { backgroundColor: "transparent" },
       }}
     >
       <Tabs.Screen
@@ -134,17 +129,6 @@ const styles = StyleSheet.create({
     paddingBottom: 10,
     backgroundColor: "transparent",
     ...shadow.glass,
-  },
-  glassClip: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    borderRadius: TAB_BAR_RADIUS,
-    borderWidth: 1,
-    borderColor: colors.glassBorder,
-    overflow: "hidden",
   },
   tabItem: {
     paddingTop: 4,

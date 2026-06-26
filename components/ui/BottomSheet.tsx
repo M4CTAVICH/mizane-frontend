@@ -106,7 +106,7 @@ export default function BottomSheet({
 
 const styles = StyleSheet.create({
   overlay: {
-    ...StyleSheet.absoluteFill,
+    ...StyleSheet.absoluteFillObject,
     backgroundColor: "rgba(0,0,0,0.65)", // dark backdrop
   },
   sheet: {

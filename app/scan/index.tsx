@@ -351,7 +351,7 @@ const styles = StyleSheet.create({
     borderBottomRightRadius: 4,
   },
   processingOverlay: {
-    ...StyleSheet.absoluteFill,
+    ...StyleSheet.absoluteFillObject,
     backgroundColor: "rgba(0,0,0,0.75)",
     alignItems: "center",
     justifyContent: "center",

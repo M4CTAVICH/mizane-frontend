@@ -9,8 +9,6 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from "react-native";
-import { BlurView } from "expo-blur";
-import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { colors, spacing, radius, typography, textScale } from "../../constants/tokens";
 import { useAssistantStore } from "../../store/assistantStore";
@@ -97,35 +95,26 @@ export default function AssistantScreen() {
         behavior={Platform.OS === "ios" ? "padding" : undefined}
         keyboardVerticalOffset={0}
       >
-        {/* ── Glass header (functional layer) ───────────────────────── */}
-        <View style={styles.header}>
-          <BlurView intensity={50} tint="dark" style={StyleSheet.absoluteFill} />
-          <View style={[StyleSheet.absoluteFill, { backgroundColor: colors.glassFill }]} />
-          <LinearGradient
-            colors={[colors.glassHighlight, "rgba(255,255,255,0.03)", "transparent"]}
-            locations={[0, 0.4, 1]}
-            start={{ x: 0.2, y: 0 }}
-            end={{ x: 0.5, y: 1 }}
-            style={StyleSheet.absoluteFill}
-            pointerEvents="none"
-          />
-          <View style={styles.headerRow}>
-            <TouchableOpacity hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-              <Ionicons name="notifications-outline" size={22} color={colors.textMuted} />
-            </TouchableOpacity>
-            <View style={{ alignItems: "flex-end" }}>
-              <Text style={textScale.label}>MIZANE · AI</Text>
-              <ArabicText
-                size="heading"
-                weight="semibold"
-                color={colors.gold}
-                style={styles.headerTitle}
-              >
-                ميزان
-              </ArabicText>
+        {/* ── Floating glass header pill (functional layer) ─────────── */}
+        <View style={styles.headerWrap}>
+          <LiquidGlassContainer radius={radius.lg} padding={spacing.md}>
+            <View style={styles.headerRow}>
+              <TouchableOpacity hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                <Ionicons name="notifications-outline" size={22} color={colors.textMuted} />
+              </TouchableOpacity>
+              <View style={{ alignItems: "flex-end" }}>
+                <Text style={textScale.label}>MIZANE · AI</Text>
+                <ArabicText
+                  size="heading"
+                  weight="semibold"
+                  color={colors.gold}
+                  style={styles.headerTitle}
+                >
+                  ميزان
+                </ArabicText>
+              </View>
             </View>
-          </View>
-          <View style={styles.headerHairline} />
+          </LiquidGlassContainer>
         </View>
 
         {/* ── Chat list (transparent — fluid mesh shows through) ─────── */}
@@ -223,12 +212,11 @@ function getDemoResponse(query: string): { content: string; citations: any[] } {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "transparent" },
 
-  // Glass header
-  header: {
+  // Floating glass header
+  headerWrap: {
     paddingTop: Platform.OS === "ios" ? 56 : 28,
-    paddingBottom: spacing.md,
-    paddingHorizontal: spacing.lg,
-    overflow: "hidden",
+    paddingHorizontal: spacing.md,
+    paddingBottom: spacing.sm,
   },
   headerRow: {
     flexDirection: "row",
@@ -236,14 +224,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   headerTitle: { fontSize: 24, lineHeight: 30 },
-  headerHairline: {
-    position: "absolute",
-    bottom: 0,
-    left: 0,
-    right: 0,
-    height: StyleSheet.hairlineWidth,
-    backgroundColor: colors.glassBorder,
-  },
 
   // Chat list
   list: { flex: 1, backgroundColor: "transparent" },

@@ -8,14 +8,13 @@ import {
   ScrollView,
   Platform,
 } from "react-native";
-import { BlurView } from "expo-blur";
-import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { colors, radius, spacing, typography, textScale } from "../../constants/tokens";
 import { PROCEDURES } from "../../constants/tokens";
 import ArabicText from "../../components/shared/ArabicText";
 import ContentCard from "../../components/ui/ContentCard";
+import { LiquidGlassContainer } from "../../components/ui/LiquidGlassContainer";
 
 const FILTERS = [
   { id: "all", label: "الكل" },
@@ -36,27 +35,18 @@ export default function ProceduresScreen() {
 
   return (
     <View style={styles.container}>
-      {/* ── Glass header (functional layer) ───────────────────────── */}
-      <View style={styles.header}>
-        <BlurView intensity={50} tint="dark" style={StyleSheet.absoluteFill} />
-        <View style={[StyleSheet.absoluteFill, { backgroundColor: colors.glassFill }]} />
-        <LinearGradient
-          colors={[colors.glassHighlight, "rgba(255,255,255,0.03)", "transparent"]}
-          locations={[0, 0.4, 1]}
-          start={{ x: 0.2, y: 0 }}
-          end={{ x: 0.5, y: 1 }}
-          style={StyleSheet.absoluteFill}
-          pointerEvents="none"
-        />
-        <View style={styles.headerRow}>
-          <View style={{ alignItems: "flex-end" }}>
-            <Text style={textScale.label}>MIZANE · PROCEDURES</Text>
-            <ArabicText size="heading" weight="semibold" color={colors.textPrimary}>
-              الإجراءات
-            </ArabicText>
+      {/* ── Floating glass header pill (functional layer) ─────────── */}
+      <View style={styles.headerWrap}>
+        <LiquidGlassContainer radius={radius.lg} padding={spacing.md}>
+          <View style={styles.headerRow}>
+            <View style={{ alignItems: "flex-end" }}>
+              <Text style={textScale.label}>MIZANE · PROCEDURES</Text>
+              <ArabicText size="heading" weight="semibold" color={colors.textPrimary}>
+                الإجراءات
+              </ArabicText>
+            </View>
           </View>
-        </View>
-        <View style={styles.headerHairline} />
+        </LiquidGlassContainer>
       </View>
 
       {/* Filter chips */}
@@ -147,22 +137,13 @@ export default function ProceduresScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "transparent" },
 
-  // Glass header
-  header: {
+  // Floating glass header
+  headerWrap: {
     paddingTop: Platform.OS === "ios" ? 56 : 28,
-    paddingBottom: spacing.md,
-    paddingHorizontal: spacing.lg,
-    overflow: "hidden",
+    paddingHorizontal: spacing.md,
+    paddingBottom: spacing.sm,
   },
   headerRow: { alignItems: "flex-end" },
-  headerHairline: {
-    position: "absolute",
-    bottom: 0,
-    left: 0,
-    right: 0,
-    height: StyleSheet.hairlineWidth,
-    backgroundColor: colors.glassBorder,
-  },
 
   filterScroll: {
     maxHeight: 48,

@@ -3,6 +3,7 @@ import "../lib/i18n";
 import React, { useEffect } from "react";
 import { View } from "react-native";
 import { Stack } from "expo-router";
+import { ThemeProvider, DarkTheme, type Theme } from "@react-navigation/native";
 import { StatusBar } from "expo-status-bar";
 import { useFonts } from "expo-font";
 import FluidMesh from "../components/ui/FluidMesh";
@@ -28,6 +29,21 @@ const queryClient = new QueryClient({
   },
 });
 
+// React Navigation paints its scene/card with theme.colors.background — which is
+// WHITE in the default theme. Make it transparent so the pitch-black root canvas
+// + FluidMesh show through every screen instead of a white navigator background.
+const ObsidianNavTheme: Theme = {
+  ...DarkTheme,
+  colors: {
+    ...DarkTheme.colors,
+    background: "transparent",
+    card: "transparent",
+    border: "transparent",
+    text: "#FFFFFF",
+    primary: "#E8BE6A",
+  },
+};
+
 export default function RootLayout() {
   const [fontsLoaded, fontError] = useFonts({
     "IBMPlexArabic-Regular": IBMPlexSansArabic_400Regular,
@@ -49,27 +65,29 @@ export default function RootLayout() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <StatusBar style="light" />
-      {/* Obsidian root canvas — pitch black with the underlying fluid mesh
-          so every Liquid Glass surface above has colored light to refract. */}
-      <View style={{ flex: 1, backgroundColor: "#000000" }}>
-        <FluidMesh />
-        <Stack
-          screenOptions={{
-            headerShown: false,
-            // Transparent so the root mesh shows through reskinned screens.
-            contentStyle: { backgroundColor: "transparent" },
-          }}
-        >
-          <Stack.Screen name="index" />
-          <Stack.Screen name="(auth)" />
-          <Stack.Screen name="(tabs)" />
-          <Stack.Screen name="scan/index" options={{ presentation: "modal" }} />
-          <Stack.Screen name="letter/[template]" />
-          <Stack.Screen name="procedure/[id]" />
-          <Stack.Screen name="vault/[id]" />
-        </Stack>
-      </View>
+      <ThemeProvider value={ObsidianNavTheme}>
+        <StatusBar style="light" />
+        {/* Obsidian root canvas — pitch black with the underlying fluid mesh
+            so every Liquid Glass surface above has colored light to refract. */}
+        <View style={{ flex: 1, backgroundColor: "#000000" }}>
+          <FluidMesh />
+          <Stack
+            screenOptions={{
+              headerShown: false,
+              // Transparent so the root mesh shows through reskinned screens.
+              contentStyle: { backgroundColor: "transparent" },
+            }}
+          >
+            <Stack.Screen name="index" />
+            <Stack.Screen name="(auth)" />
+            <Stack.Screen name="(tabs)" />
+            <Stack.Screen name="scan/index" options={{ presentation: "modal" }} />
+            <Stack.Screen name="letter/[template]" />
+            <Stack.Screen name="procedure/[id]" />
+            <Stack.Screen name="vault/[id]" />
+          </Stack>
+        </View>
+      </ThemeProvider>
     </QueryClientProvider>
   );
 }

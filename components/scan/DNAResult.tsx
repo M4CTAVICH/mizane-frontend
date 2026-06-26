@@ -1,8 +1,9 @@
 import React from "react";
 import { View, StyleSheet } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { colors, radius, spacing } from "../../constants/tokens";
+import { colors, spacing } from "../../constants/tokens";
 import ArabicText from "../shared/ArabicText";
+import ContentCard from "../ui/ContentCard";
 
 export interface DNACheck {
   id: string;
@@ -17,7 +18,7 @@ interface DNAResultProps {
 
 export default function DNAResult({ checks, authentic }: DNAResultProps) {
   return (
-    <View style={styles.container}>
+    <ContentCard variant={authentic ? "verified" : "flagged"} style={styles.container}>
       <View style={styles.header}>
         <Ionicons
           name={authentic ? "checkmark-circle" : "warning"}
@@ -46,15 +47,12 @@ export default function DNAResult({ checks, authentic }: DNAResultProps) {
           </View>
         ))}
       </View>
-    </View>
+    </ContentCard>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: colors.surface2,
-    borderRadius: radius.md,
-    padding: spacing.md,
     gap: spacing.sm,
   },
   header: {

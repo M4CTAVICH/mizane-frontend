@@ -6,7 +6,7 @@ import {
   ViewStyle,
   TextStyle,
 } from "react-native";
-import { colors, radius, spacing, typography } from "../../constants/tokens";
+import { colors, radius, spacing, shadow } from "../../constants/tokens";
 import ArabicText from "../shared/ArabicText";
 
 type Variant = "primary" | "secondary" | "ghost" | "danger";
@@ -41,6 +41,7 @@ export default function Button({
     styles.base,
     styles[variant],
     styles[`size_${size}`],
+    variant === "primary" && !isDisabled ? shadow.gold : {},
     fullWidth ? styles.fullWidth : {},
     isDisabled ? styles.disabled : {},
     style ?? {},
@@ -49,11 +50,9 @@ export default function Button({
   const textColor =
     variant === "primary"
       ? colors.inkBlue
-      : variant === "secondary"
-        ? colors.justiceGold
-        : variant === "danger"
-          ? colors.danger
-          : colors.textSecondary;
+      : variant === "danger"
+        ? colors.danger
+        : colors.textPrimary;
 
   return (
     <TouchableOpacity
@@ -65,7 +64,7 @@ export default function Button({
       {loading ? (
         <ActivityIndicator
           size="small"
-          color={variant === "primary" ? colors.inkBlue : colors.justiceGold}
+          color={variant === "primary" ? colors.inkBlue : colors.textPrimary}
         />
       ) : (
         <ArabicText
@@ -92,12 +91,13 @@ const styles = StyleSheet.create({
 
   // Variants
   primary: {
-    backgroundColor: colors.justiceGold,
+    backgroundColor: colors.gold, // vibrant gold CTA on black
   },
   secondary: {
-    backgroundColor: "transparent",
-    borderWidth: 1.5,
-    borderColor: colors.justiceGold,
+    // glass / outline white — functional layer hint without full blur
+    backgroundColor: colors.glassFill,
+    borderWidth: 1,
+    borderColor: colors.glassBorder,
   },
   ghost: {
     backgroundColor: "transparent",

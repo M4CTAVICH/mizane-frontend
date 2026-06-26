@@ -10,12 +10,13 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { colors, radius, shadow, spacing, typography } from "../../constants/tokens";
+import { colors, radius, spacing, typography } from "../../constants/tokens";
 import { PROCEDURES, DocumentType } from "../../constants/tokens";
 import { useVaultStore } from "../../store/vaultStore";
 import ArabicText from "../../components/shared/ArabicText";
 import Button from "../../components/ui/Button";
-import Card from "../../components/ui/Card";
+import ContentCard from "../../components/ui/ContentCard";
+import { LiquidGlassContainer } from "../../components/ui/LiquidGlassContainer";
 
 export default function ProcedureDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -42,17 +43,25 @@ export default function ProcedureDetailScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()}>
-          <Ionicons name="arrow-forward" size={22} color={colors.parchment} />
-        </TouchableOpacity>
-        <ArabicText weight="semibold" color={colors.parchment} numberOfLines={1}>
-          {procedure.label}
-        </ArabicText>
-        <TouchableOpacity>
-          <Ionicons name="ellipsis-horizontal" size={22} color={colors.goldLight} />
-        </TouchableOpacity>
+      {/* ── Floating glass header pill (functional layer) ─────────── */}
+      <View style={styles.headerWrap}>
+        <LiquidGlassContainer radius={radius.lg} padding={spacing.md}>
+          <View style={styles.headerRow}>
+            <TouchableOpacity
+              style={styles.headerBtn}
+              onPress={() => router.back()}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
+              <Ionicons name="arrow-forward" size={22} color={colors.textPrimary} />
+            </TouchableOpacity>
+            <ArabicText weight="semibold" color={colors.textPrimary} numberOfLines={1}>
+              {procedure.label}
+            </ArabicText>
+            <TouchableOpacity style={styles.headerBtn}>
+              <Ionicons name="ellipsis-horizontal" size={22} color={colors.gold} />
+            </TouchableOpacity>
+          </View>
+        </LiquidGlassContainer>
       </View>
 
       <ScrollView
@@ -60,7 +69,7 @@ export default function ProcedureDetailScreen() {
         showsVerticalScrollIndicator={false}
       >
         {/* Progress stepper */}
-        <Card>
+        <ContentCard>
           <ArabicText size="caption" weight="medium" color={colors.textMuted} style={{ textAlign: "center", marginBottom: spacing.md }}>
             الخطوة {currentStep + 1} من {procedure.steps.length}
           </ArabicText>
@@ -79,7 +88,7 @@ export default function ProcedureDetailScreen() {
                     ]}
                   >
                     {idx < currentStep ? (
-                      <Ionicons name="checkmark" size={12} color="#fff" />
+                      <Ionicons name="checkmark" size={12} color={colors.inkBlue} />
                     ) : (
                       <ArabicText
                         size="caption"
@@ -102,10 +111,10 @@ export default function ProcedureDetailScreen() {
               </React.Fragment>
             ))}
           </View>
-        </Card>
+        </ContentCard>
 
         {/* Current step content */}
-        <Card>
+        <ContentCard>
           <ArabicText size="heading" weight="semibold" color={colors.textPrimary}>
             {procedure.steps[currentStep]}
           </ArabicText>
@@ -128,7 +137,7 @@ export default function ProcedureDetailScreen() {
                 >
                   <ArabicText
                     size="caption"
-                    color={item.inVault ? colors.safe : colors.justiceGold}
+                    color={item.inVault ? colors.safe : colors.gold}
                   >
                     {item.inVault ? "موجود في الخزينة" : "أضف →"}
                   </ArabicText>
@@ -150,13 +159,13 @@ export default function ProcedureDetailScreen() {
               </View>
             );
           })}
-        </Card>
+        </ContentCard>
 
         {/* Deadline calculator */}
         {procedure.deadlines.length > 0 && (
-          <Card>
+          <ContentCard>
             <View style={styles.sectionHeader}>
-              <Ionicons name="calendar-outline" size={18} color={colors.justiceGold} />
+              <Ionicons name="calendar-outline" size={18} color={colors.gold} />
               <ArabicText weight="semibold" color={colors.textPrimary}>
                 {procedure.deadlines[0].name}
               </ArabicText>
@@ -184,7 +193,7 @@ export default function ProcedureDetailScreen() {
                 </ArabicText>
               </View>
             )}
-          </Card>
+          </ContentCard>
         )}
 
         {/* Navigation buttons */}
@@ -219,15 +228,26 @@ export default function ProcedureDetailScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.surface0 },
-  header: {
+  container: { flex: 1, backgroundColor: "transparent" },
+
+  // Glass header
+  headerWrap: {
+    paddingTop: spacing.sm,
+    paddingHorizontal: spacing.md,
+    paddingBottom: spacing.sm,
+  },
+  headerRow: {
     flexDirection: "row-reverse",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
-    backgroundColor: colors.inkBlue,
   },
+  headerBtn: {
+    width: 36,
+    height: 36,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
   content: {
     padding: spacing.md,
     gap: spacing.md,
@@ -250,8 +270,8 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   stepDotActive: {
-    backgroundColor: colors.justiceGold,
-    borderColor: colors.justiceGold,
+    backgroundColor: colors.gold,
+    borderColor: colors.gold,
   },
   stepDotDone: {
     backgroundColor: colors.safe,

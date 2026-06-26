@@ -1,20 +1,21 @@
 import React, { useState, useRef, useCallback } from "react";
 import {
   View,
+  Text,
   FlatList,
   TextInput,
   TouchableOpacity,
   StyleSheet,
-  SafeAreaView,
   KeyboardAvoidingView,
   Platform,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { colors, spacing, radius, typography } from "../../constants/tokens";
+import { colors, spacing, radius, typography, textScale } from "../../constants/tokens";
 import { useAssistantStore } from "../../store/assistantStore";
 import { useAuthStore } from "../../store/authStore";
 import { assistantApi } from "../../lib/api";
 import ArabicText from "../../components/shared/ArabicText";
+import { LiquidGlassContainer } from "../../components/ui/LiquidGlassContainer";
 import ChatBubble from "../../components/assistant/ChatBubble";
 import QuickActions from "../../components/assistant/QuickActions";
 import type { Message } from "../../store/assistantStore";
@@ -88,77 +89,87 @@ export default function AssistantScreen() {
   const keyExtractor = useCallback((item: Message) => item.id, []);
 
   return (
-    <SafeAreaView style={styles.container}>
+    <View style={styles.container}>
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === "ios" ? "padding" : undefined}
         keyboardVerticalOffset={0}
       >
-        {/* Header */}
-        <View style={styles.header}>
-          <TouchableOpacity hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-            <Ionicons name="notifications-outline" size={22} color={colors.goldLight} />
-          </TouchableOpacity>
-          <ArabicText
-            size="heading"
-            weight="semibold"
-            color={colors.justiceGold}
-            style={styles.headerTitle}
-          >
-            ميزان
-          </ArabicText>
+        {/* ── Floating glass header pill (functional layer) ─────────── */}
+        <View style={styles.headerWrap}>
+          <LiquidGlassContainer radius={radius.lg} padding={spacing.md}>
+            <View style={styles.headerRow}>
+              <TouchableOpacity hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                <Ionicons name="notifications-outline" size={22} color={colors.textMuted} />
+              </TouchableOpacity>
+              <View style={{ alignItems: "flex-end" }}>
+                <Text style={textScale.label}>MIZANE · AI</Text>
+                <ArabicText
+                  size="heading"
+                  weight="semibold"
+                  color={colors.gold}
+                  style={styles.headerTitle}
+                >
+                  ميزان
+                </ArabicText>
+              </View>
+            </View>
+          </LiquidGlassContainer>
         </View>
 
-        {/* Chat list */}
+        {/* ── Chat list (transparent — fluid mesh shows through) ─────── */}
         <FlatList
           ref={flatListRef}
           data={messages}
           renderItem={renderItem}
           keyExtractor={keyExtractor}
+          style={styles.list}
           contentContainerStyle={[
             styles.chatContent,
             messages.length === 0 && styles.chatEmpty,
           ]}
           showsVerticalScrollIndicator={false}
-          ListEmptyComponent={
-            <QuickActions onActionPress={sendMessage} />
-          }
+          ListEmptyComponent={<QuickActions onActionPress={sendMessage} />}
           onContentSizeChange={() =>
             messages.length > 0 &&
             flatListRef.current?.scrollToEnd({ animated: false })
           }
         />
 
-        {/* Input row */}
-        <View style={styles.inputRow}>
-          <TouchableOpacity style={styles.micBtn} activeOpacity={0.7}>
-            <Ionicons name="mic-outline" size={22} color={colors.textMuted} />
-          </TouchableOpacity>
-          <TextInput
-            style={styles.input}
-            value={input}
-            onChangeText={setInput}
-            placeholder="اكتب سؤالك..."
-            placeholderTextColor={colors.textMuted}
-            multiline
-            returnKeyType="send"
-            onSubmitEditing={() => sendMessage(input)}
-          />
-          <TouchableOpacity
-            style={[styles.sendBtn, !input.trim() && styles.sendBtnDisabled]}
-            onPress={() => sendMessage(input)}
-            disabled={!input.trim()}
-            activeOpacity={0.8}
-          >
-            <Ionicons
-              name="arrow-up"
-              size={20}
-              color={input.trim() ? colors.inkBlue : colors.textMuted}
-            />
-          </TouchableOpacity>
+        {/* ── Glass composer pill (floats above the glass tab bar) ───── */}
+        <View style={styles.composerWrap}>
+          <LiquidGlassContainer radius={radius.xl} padding={6} intensity={50}>
+            <View style={styles.inputRow}>
+              <TouchableOpacity style={styles.micBtn} activeOpacity={0.7}>
+                <Ionicons name="mic-outline" size={22} color={colors.textMuted} />
+              </TouchableOpacity>
+              <TextInput
+                style={styles.input}
+                value={input}
+                onChangeText={setInput}
+                placeholder="اكتب سؤالك..."
+                placeholderTextColor={colors.textMuted}
+                multiline
+                returnKeyType="send"
+                onSubmitEditing={() => sendMessage(input)}
+              />
+              <TouchableOpacity
+                style={[styles.sendBtn, !input.trim() && styles.sendBtnDisabled]}
+                onPress={() => sendMessage(input)}
+                disabled={!input.trim()}
+                activeOpacity={0.8}
+              >
+                <Ionicons
+                  name="arrow-up"
+                  size={20}
+                  color={input.trim() ? colors.inkBlue : colors.textMuted}
+                />
+              </TouchableOpacity>
+            </View>
+          </LiquidGlassContainer>
         </View>
       </KeyboardAvoidingView>
-    </SafeAreaView>
+    </View>
   );
 }
 
@@ -199,30 +210,41 @@ function getDemoResponse(query: string): { content: string; citations: any[] } {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.surface0 },
-  header: {
+  container: { flex: 1, backgroundColor: "transparent" },
+
+  // Floating glass header
+  headerWrap: {
+    paddingTop: Platform.OS === "ios" ? 56 : 28,
+    paddingHorizontal: spacing.md,
+    paddingBottom: spacing.sm,
+  },
+  headerRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    backgroundColor: colors.inkBlue,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
   },
-  headerTitle: { fontSize: 22 },
+  headerTitle: { fontSize: 24, lineHeight: 30 },
+
+  // Chat list
+  list: { flex: 1, backgroundColor: "transparent" },
   chatContent: {
     paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
+    paddingTop: spacing.md,
+    paddingBottom: 220, // clear composer + floating tab bar
     gap: spacing.xs,
   },
-  chatEmpty: { flex: 1 },
+  chatEmpty: { flexGrow: 1 },
+
+  // Composer
+  composerWrap: {
+    position: "absolute",
+    left: 16,
+    right: 16,
+    bottom: Platform.OS === "ios" ? 110 : 96, // sit above the glass tab bar
+  },
   inputRow: {
     flexDirection: "row-reverse",
     alignItems: "flex-end",
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    backgroundColor: colors.surface1,
-    borderTopWidth: 1,
-    borderTopColor: colors.ink200,
     gap: spacing.sm,
   },
   micBtn: {
@@ -235,8 +257,6 @@ const styles = StyleSheet.create({
     flex: 1,
     minHeight: 40,
     maxHeight: 120,
-    backgroundColor: colors.surface2,
-    borderRadius: radius.full,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
     fontSize: 15,
@@ -248,11 +268,11 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: colors.justiceGold,
+    backgroundColor: colors.gold,
     alignItems: "center",
     justifyContent: "center",
   },
   sendBtnDisabled: {
-    backgroundColor: colors.ink200,
+    backgroundColor: colors.glassFillStrong,
   },
 });

@@ -1,13 +1,9 @@
 import React from "react";
-import {
-  View,
-  FlatList,
-  StyleSheet,
-  SafeAreaView,
-} from "react-native";
+import { View, FlatList, StyleSheet, Platform } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { colors, radius, shadow, spacing } from "../../constants/tokens";
+import { colors, radius, spacing } from "../../constants/tokens";
 import ArabicText from "../../components/shared/ArabicText";
+import { LiquidGlassContainer } from "../../components/ui/LiquidGlassContainer";
 
 type ActivityCategory = "deadline" | "letter" | "proof" | "vault" | "procedure";
 
@@ -21,9 +17,9 @@ interface ActivityItem {
 
 const ICON_MAP: Record<ActivityCategory, { icon: string; color: string }> = {
   deadline: { icon: "alarm-outline", color: colors.danger },
-  letter: { icon: "mail-outline", color: colors.justiceGold },
+  letter: { icon: "mail-outline", color: colors.gold },
   proof: { icon: "shield-checkmark-outline", color: colors.safe },
-  vault: { icon: "document-outline", color: colors.justiceGold },
+  vault: { icon: "document-outline", color: colors.gold },
   procedure: { icon: "list-outline", color: colors.caution },
 };
 
@@ -88,7 +84,7 @@ function ActivityRow({ item, isLast }: { item: ActivityItem; isLast: boolean }) 
 
       {/* Content */}
       <View style={styles.rowContent}>
-        <View style={[styles.iconCircle, { backgroundColor: `${meta.color}15` }]}>
+        <View style={[styles.iconCircle, { backgroundColor: `${meta.color}22` }]}>
           <Ionicons name={meta.icon as any} size={18} color={meta.color} />
         </View>
         <View style={styles.rowText}>
@@ -99,7 +95,7 @@ function ActivityRow({ item, isLast }: { item: ActivityItem; isLast: boolean }) 
             {item.subtitle}
           </ArabicText>
         </View>
-        <ArabicText size="caption" color={colors.justiceGold} style={styles.dateText}>
+        <ArabicText size="caption" color={colors.gold} style={styles.dateText}>
           {formatDate(item.date)}
         </ArabicText>
       </View>
@@ -109,23 +105,26 @@ function ActivityRow({ item, isLast }: { item: ActivityItem; isLast: boolean }) 
 
 export default function ActivityScreen() {
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <ArabicText size="heading" weight="semibold" color={colors.textPrimary}>
-          النشاط
-        </ArabicText>
+    <View style={styles.container}>
+      {/* Floating glass header pill (functional layer) */}
+      <View style={styles.headerWrap}>
+        <LiquidGlassContainer radius={radius.lg} padding={spacing.md}>
+          <View style={styles.headerRow}>
+            <ArabicText size="heading" weight="semibold" color={colors.textPrimary}>
+              النشاط
+            </ArabicText>
+          </View>
+        </LiquidGlassContainer>
       </View>
 
       <FlatList
         data={DEMO_ACTIVITIES}
         keyExtractor={(item) => item.id}
+        style={styles.list}
         contentContainerStyle={styles.listContent}
         showsVerticalScrollIndicator={false}
         renderItem={({ item, index }) => (
-          <ActivityRow
-            item={item}
-            isLast={index === DEMO_ACTIVITIES.length - 1}
-          />
+          <ActivityRow item={item} isLast={index === DEMO_ACTIVITIES.length - 1} />
         )}
         ListEmptyComponent={
           <View style={styles.emptyState}>
@@ -136,22 +135,25 @@ export default function ActivityScreen() {
           </View>
         }
       />
-    </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.surface0 },
-  header: {
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
-    backgroundColor: colors.surface1,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.ink200,
-    alignItems: "flex-end",
+  container: { flex: 1, backgroundColor: "transparent" },
+
+  // Floating glass header
+  headerWrap: {
+    paddingTop: Platform.OS === "ios" ? 56 : 28,
+    paddingHorizontal: spacing.md,
+    paddingBottom: spacing.sm,
   },
+  headerRow: { alignItems: "flex-end" },
+
+  list: { flex: 1, backgroundColor: "transparent" },
   listContent: {
     padding: spacing.md,
+    paddingBottom: 120, // clear the floating glass tab bar
   },
   row: {
     flexDirection: "row-reverse",

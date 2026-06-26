@@ -26,6 +26,8 @@ export default function Badge({
 const styles = StyleSheet.create({
   badge: {
     borderRadius: radius.full,
+    borderWidth: 1,
+    borderColor: colors.ink200, // hairline white/10
     paddingHorizontal: spacing.sm,
     paddingVertical: 2,
   },

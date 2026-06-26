@@ -108,7 +108,9 @@ export default function OTPScreen() {
                 {otp.map((digit, idx) => (
                   <TextInput
                     key={idx}
-                    ref={(r) => (inputRefs.current[idx] = r)}
+                    ref={(r) => {
+                      inputRefs.current[idx] = r;
+                    }}
                     style={[styles.otpCell, digit ? styles.otpCellFilled : {}]}
                     value={digit}
                     onChangeText={(v) => handleOtpChange(v, idx)}

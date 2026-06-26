@@ -1,61 +1,77 @@
 // ─────────────────────────────────────────────────────────────────────────
-// OBSIDIAN DARK — iOS 26 "Liquid Glass" theme
+// JUSTICE DARK — a calm, trustworthy dark theme for a legal companion.
 //
-// Two material layers (Apple HIG):
-//  · FUNCTIONAL layer  → Liquid Glass (blur + specular border). Tokens: glass*.
-//  · CONTENT layer     → deep matte, low-blur surfaces.          Tokens: surface*.
+// Principles (Apple HIG):
+//  · Depth comes from NEUTRAL elevation + contrast, never colored glows.
+//  · Gold is a precious accent — used sparingly for intent, never for decoration.
+//  · One soft material (glass) reserved for 1–2 floating chrome surfaces;
+//    everything else is flat matte content with a hairline edge.
+//  · The canvas is neutral near-black — no off-brand ambient color.
 //
-// Text uses Apple vibrancy: pure white primary, translucent-white secondary/muted
-// so the glyphs absorb the refracted color passing through the glass.
+// Token layers:
+//  · CONTENT layer  → flat matte surfaces.            Tokens: surface*.
+//  · CHROME layer   → soft glass (floating bars only). Tokens: glass*.
 // ─────────────────────────────────────────────────────────────────────────
 export const colors = {
-  // Root canvas — true pitch black
+  // Root canvas
   black: "#000000",
 
   // Brand
-  inkBlue: "#0D1B2A", // retained: dark text sitting on gold actions
+  inkBlue: "#1A1408", // warm near-black ink that sits on gold actions
   parchment: "#F5F0E8",
-  justiceGold: "#C9992A",
+  justiceGold: "#C9992A", // deep seal gold
   goldLight: "#E8BE6A",
-  gold: "#E8BE6A", // vibrant accent tuned for black canvas
+  gold: "#E0B64D", // primary gold accent (Figma)
+  goldDeep: "#C79A3A", // quieter gold — eyebrows, Latin subtitles
+  goldGradTop: "#E9C156", // gold action gradient — top stop
+  goldGradBottom: "#CDA23C", // gold action gradient — bottom stop
 
-  // Liquid Glass material (functional layer) — render over a BlurView
-  glassFill: "rgba(255,255,255,0.04)", // base translucent body
-  glassFillStrong: "rgba(255,255,255,0.08)", // pressed / prominent
-  glassBorder: "rgba(255,255,255,0.15)", // specular hairline edge
-  glassHighlight: "rgba(255,255,255,0.25)", // top specular light catch
+  // Figma card material — a matte translucent body that lets the colored
+  // ambient glow read faintly through, over the FluidMesh backdrop.
+  cardFill: "rgba(28,28,30,0.55)",
+  cardBorder: "rgba(255,255,255,0.10)",
+  cardHighlight: "rgba(255,255,255,0.06)", // inset top light catch
 
-  // Underlying fluid mesh — colored light for the glass to refract
-  meshIndigo: "rgba(99,102,241,0.06)", // deep royal indigo
-  meshCyan: "rgba(20,184,166,0.04)", // dark emerald / cyan
+  // Glass material (chrome layer only) — render over a BlurView.
+  // Calmed from the old values so the glass reads as a quiet surface,
+  // not a shiny showpiece.
+  glassFill: "rgba(255,255,255,0.05)", // base translucent body
+  glassFillStrong: "rgba(255,255,255,0.09)", // pressed / prominent
+  glassBorder: "rgba(255,255,255,0.10)", // hairline edge (was 0.15)
+  glassHighlight: "rgba(255,255,255,0.14)", // top light catch (was 0.25)
 
-  // Semantic — brightened for legibility on black
-  safe: "#2DD4A7",
-  safeLight: "rgba(45,212,167,0.14)",
-  caution: "#FB923C",
-  cautionLight: "rgba(251,146,60,0.14)",
+  // Retained for token compatibility — ambient mesh is now neutral (see FluidMesh).
+  meshIndigo: "rgba(255,255,255,0.02)",
+  meshCyan: "rgba(255,255,255,0.015)",
+
+  // Semantic — legible on dark, not candy-bright
+  safe: "#34D399",
+  safeLight: "rgba(52,211,153,0.12)",
+  caution: "#F59E0B",
+  cautionLight: "rgba(245,158,11,0.12)",
   danger: "#F87171",
-  dangerLight: "rgba(248,113,113,0.14)",
+  dangerLight: "rgba(248,113,113,0.12)",
 
-  // Neutral scale — inverted to translucent whites (borders, dividers, fills)
+  // Neutral scale — translucent whites (borders, dividers, fills)
   ink100: "rgba(255,255,255,0.92)",
-  ink200: "rgba(255,255,255,0.10)", // hairline borders / dividers
-  ink300: "rgba(255,255,255,0.18)",
+  ink200: "rgba(255,255,255,0.08)", // hairline borders / dividers
+  ink300: "rgba(255,255,255,0.14)",
   ink400: "rgba(255,255,255,0.40)", // = textMuted
   ink500: "rgba(255,255,255,0.55)",
   ink600: "rgba(255,255,255,0.70)",
   ink700: "rgba(255,255,255,0.85)",
   ink800: "#0D1B2A",
 
-  // Surface levels — content layer (deep absorbent, minimal blur)
+  // Surface levels — neutral elevation steps (clear, visible hierarchy on black)
   surface0: "#000000", // root canvas
-  surface1: "#0B0B0D", // raised content base
-  surface2: "#141417", // raised content / inset fields
+  surface1: "#121214", // raised content base
+  surface2: "#1B1B1F", // raised card / inset field
+  surface3: "#26262B", // active / pressed inset
 
-  // Text — Apple vibrancy
-  textPrimary: "#FFFFFF", // pure high-gloss white
-  textSecondary: "rgba(255,255,255,0.60)", // vibrant secondary
-  textMuted: "rgba(255,255,255,0.40)", // tertiary / labels
+  // Text
+  textPrimary: "#F5F5F7",
+  textSecondary: "rgba(245,245,247,0.62)",
+  textMuted: "#8E8E93",
 };
 
 export const typography = {
@@ -66,6 +82,10 @@ export const typography = {
   fontLatinMedium: "IBMPlexSans-Medium",
   fontLatinSemiBold: "IBMPlexSans-SemiBold",
   fontMono: "IBMPlexMono-Regular",
+  // Brand display face — calligraphic Aref Ruqaa. Used for the wordmark and
+  // large Arabic page headings (welcome, language, OTP).
+  fontDisplay: "ArefRuqaa-Bold",
+  fontDisplayRegular: "ArefRuqaa-Regular",
   // System geometric sans — SF Pro on iOS, Roboto/system on Android.
   // Used for Latin labels and large numeric "super-metrics".
   fontSystem: "System",
@@ -90,13 +110,14 @@ export const textScale = {
     letterSpacing: -0.3,
     color: colors.textPrimary,
   },
-  // Uppercase tracking tokens — labels / category tags
+  // Quiet eyebrow label — Latin captions / category tags.
+  // No uppercase transform (meaningless in Arabic) and only a whisper of
+  // tracking, so it reads as a calm label rather than decoration.
   label: {
-    fontFamily: typography.fontSystem,
-    fontWeight: "700" as const,
-    fontSize: 10,
-    letterSpacing: 2, // ≈ tracking-[0.2em] at 10px
-    textTransform: "uppercase" as const,
+    fontFamily: typography.fontLatinMedium,
+    fontWeight: "500" as const,
+    fontSize: 11,
+    letterSpacing: 0.4,
     color: colors.textMuted,
   },
 };
@@ -113,41 +134,51 @@ export const spacing = {
 export const radius = {
   sm: 8,
   md: 12,
-  lg: 20,
-  xl: 28, // Liquid Glass containers
+  lg: 16, // cards / content surfaces (was 20)
+  xl: 24, // floating glass chrome (was 28)
   full: 999,
 };
 
+// Neutral elevation only — depth comes from soft black drop shadows, never
+// colored glows. `gold` and `glass` keys are retained for compatibility but
+// now resolve to calm neutral elevations.
 export const shadow = {
   sm: {
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.06,
-    shadowRadius: 4,
+    shadowOpacity: 0.18,
+    shadowRadius: 3,
     elevation: 2,
   },
   md: {
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 12,
+    shadowOpacity: 0.28,
+    shadowRadius: 10,
     elevation: 4,
   },
-  // Deep drop for floating glass on a black canvas
+  lg: {
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.34,
+    shadowRadius: 18,
+    elevation: 8,
+  },
+  // Floating chrome (tab bar, header pills) — a soft neutral drop, not a halo.
   glass: {
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 12 },
-    shadowOpacity: 0.5,
-    shadowRadius: 28,
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.4,
+    shadowRadius: 24,
     elevation: 12,
   },
-  // Gold glow for primary actions
+  // Compatibility alias — primary actions now use neutral elevation, no glow.
   gold: {
-    shadowColor: "#E8BE6A",
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.5,
-    shadowRadius: 18,
-    elevation: 10,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 10,
+    elevation: 4,
   },
 };
 

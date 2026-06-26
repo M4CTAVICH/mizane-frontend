@@ -13,42 +13,43 @@ module.exports = {
         parchment: "#F5F0E8",
         justiceGold: "#C9992A",
         goldLight: "#E8BE6A",
-        gold: "#E8BE6A",
-        // Liquid Glass material (functional layer)
+        gold: "#D8A93D",
+        // Glass material (chrome layer only)
         glass: {
-          fill: "rgba(255,255,255,0.04)",
-          fillStrong: "rgba(255,255,255,0.08)",
-          border: "rgba(255,255,255,0.15)",
-          highlight: "rgba(255,255,255,0.25)",
+          fill: "rgba(255,255,255,0.05)",
+          fillStrong: "rgba(255,255,255,0.09)",
+          border: "rgba(255,255,255,0.10)",
+          highlight: "rgba(255,255,255,0.14)",
         },
-        // Fluid mesh ambient light
+        // Retained for compatibility — ambient mesh is now neutral
         mesh: {
-          indigo: "rgba(99,102,241,0.06)",
-          cyan: "rgba(20,184,166,0.04)",
+          indigo: "rgba(255,255,255,0.02)",
+          cyan: "rgba(255,255,255,0.015)",
         },
-        // Semantic — brightened for black canvas
-        safe: "#2DD4A7",
-        safeLight: "rgba(45,212,167,0.14)",
-        caution: "#FB923C",
-        cautionLight: "rgba(251,146,60,0.14)",
+        // Semantic — legible on dark, not candy-bright
+        safe: "#34D399",
+        safeLight: "rgba(52,211,153,0.12)",
+        caution: "#F59E0B",
+        cautionLight: "rgba(245,158,11,0.12)",
         danger: "#F87171",
-        dangerLight: "rgba(248,113,113,0.14)",
+        dangerLight: "rgba(248,113,113,0.12)",
         // Neutral scale — translucent whites
         ink100: "rgba(255,255,255,0.92)",
-        ink200: "rgba(255,255,255,0.10)",
-        ink300: "rgba(255,255,255,0.18)",
+        ink200: "rgba(255,255,255,0.08)",
+        ink300: "rgba(255,255,255,0.14)",
         ink400: "rgba(255,255,255,0.40)",
         ink500: "rgba(255,255,255,0.55)",
         ink600: "rgba(255,255,255,0.70)",
         ink700: "rgba(255,255,255,0.85)",
         ink800: "#0D1B2A",
-        // Content layer surfaces
+        // Neutral elevation surfaces
         surface0: "#000000",
-        surface1: "#0B0B0D",
-        surface2: "#141417",
-        // Text — Apple vibrancy
+        surface1: "#121214",
+        surface2: "#1B1B1F",
+        surface3: "#26262B",
+        // Text
         textPrimary: "#FFFFFF",
-        textSecondary: "rgba(255,255,255,0.60)",
+        textSecondary: "rgba(255,255,255,0.62)",
         textMuted: "rgba(255,255,255,0.40)",
       },
       fontFamily: {
@@ -63,7 +64,7 @@ module.exports = {
         "plex-mono": ["IBMPlexMono-Regular"],
       },
       borderRadius: {
-        glass: "28px",
+        glass: "24px",
       },
     },
   },

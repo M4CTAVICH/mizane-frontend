@@ -1,40 +1,15 @@
 import React from "react";
-import { View, TouchableOpacity, StyleSheet } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
+import { View, Image, TouchableOpacity, StyleSheet } from "react-native";
 import { colors, radius, spacing } from "../../constants/tokens";
+import { ORB_IMAGE } from "../../constants/assets";
 import ArabicText from "../shared/ArabicText";
-import ContentCard from "../ui/ContentCard";
 
-const QUICK_ACTIONS = [
-  {
-    id: "scan",
-    icon: "document-text-outline",
-    label: "افحص وثيقة",
-    sublabel: "Scanner",
-    route: "/scan",
-  },
-  {
-    id: "rights",
-    icon: "scale-outline",
-    label: "ما هي حقوقي؟",
-    sublabel: "Rights Q&A",
-    message: "ما هي حقوقي القانونية في الجزائر؟",
-  },
-  {
-    id: "procedure",
-    icon: "list-outline",
-    label: "اتبع إجراءً",
-    sublabel: "Procedures",
-    route: "/(tabs)/procedures",
-  },
-  {
-    id: "letter",
-    icon: "mail-outline",
-    label: "اكتب رسالة",
-    sublabel: "Letter Generator",
-    route: "/letter/labor_complaint",
-  },
+// Suggested opening prompts. Each one is sent verbatim into the assistant.
+const SUGGESTIONS = [
+  "افحص صلاحية وثيقة لديّ",
+  "ما هي حقوقي كمستأجر؟",
+  "ساعدني في صياغة شكوى عمل",
+  "اشرح خطوات تجديد الإقامة",
 ] as const;
 
 interface QuickActionsProps {
@@ -42,45 +17,42 @@ interface QuickActionsProps {
 }
 
 export default function QuickActions({ onActionPress }: QuickActionsProps) {
-  const router = useRouter();
-
-  const handlePress = (action: (typeof QUICK_ACTIONS)[number]) => {
-    if ("route" in action && action.route) {
-      router.push(action.route as any);
-    } else if ("message" in action && action.message) {
-      onActionPress(action.message);
-    }
-  };
-
   return (
     <View style={styles.container}>
+      {/* Hero orb with a soft gold halo */}
+      <View style={styles.orbWrap}>
+        <Image source={ORB_IMAGE} style={styles.orb} resizeMode="cover" />
+      </View>
+
       <ArabicText
         size="heading"
         weight="semibold"
         color={colors.textPrimary}
+        align="center"
         style={styles.greeting}
       >
         مرحباً، كيف يمكنني مساعدتك؟
       </ArabicText>
-      <View style={styles.grid}>
-        {QUICK_ACTIONS.map((action) => (
+      <ArabicText
+        size="caption"
+        color={colors.textMuted}
+        align="center"
+        style={styles.subtitle}
+      >
+        مساعدك القانوني الخاص، يجيب بسرية تامة على كل ما يخص وثائقك وحقوقك.
+      </ArabicText>
+
+      <View style={styles.list}>
+        {SUGGESTIONS.map((text) => (
           <TouchableOpacity
-            key={action.id}
-            style={styles.cardWrap}
-            onPress={() => handlePress(action)}
-            activeOpacity={0.8}
+            key={text}
+            style={styles.pill}
+            onPress={() => onActionPress(text)}
+            activeOpacity={0.75}
           >
-            <ContentCard variant="raised" style={styles.card}>
-              <View style={styles.iconContainer}>
-                <Ionicons name={action.icon as any} size={24} color={colors.gold} />
-              </View>
-              <ArabicText weight="medium" color={colors.textPrimary} style={styles.label}>
-                {action.label}
-              </ArabicText>
-              <ArabicText size="caption" color={colors.textMuted} style={styles.sublabel}>
-                {action.sublabel}
-              </ArabicText>
-            </ContentCard>
+            <ArabicText weight="medium" color={colors.textPrimary} style={styles.pillText}>
+              {text}
+            </ArabicText>
           </TouchableOpacity>
         ))}
       </View>
@@ -89,31 +61,56 @@ export default function QuickActions({ onActionPress }: QuickActionsProps) {
 }
 
 const styles = StyleSheet.create({
-  container: { paddingHorizontal: spacing.md, paddingTop: spacing.lg },
-  greeting: {
-    textAlign: "right",
-    marginBottom: spacing.lg,
+  container: {
+    paddingHorizontal: spacing.xs,
+    paddingTop: spacing.sm,
+    alignItems: "center",
   },
-  grid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: spacing.sm,
-  },
-  cardWrap: {
-    width: "48%",
-  },
-  card: {
-    gap: spacing.xs,
-  },
-  iconContainer: {
-    width: 44,
-    height: 44,
-    borderRadius: radius.md,
-    backgroundColor: `${colors.gold}1F`, // vibrant gold tint
+  orbWrap: {
+    width: 112,
+    height: 112,
+    borderRadius: 56,
     alignItems: "center",
     justifyContent: "center",
-    alignSelf: "flex-end",
+    // Soft gold glow around the orb.
+    shadowColor: colors.gold,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.35,
+    shadowRadius: 30,
+    elevation: 0,
   },
-  label: { fontSize: 14, textAlign: "right" },
-  sublabel: { textAlign: "right" },
+  orb: {
+    width: 112,
+    height: 112,
+    borderRadius: 56,
+  },
+  greeting: {
+    fontSize: 22,
+    lineHeight: 33,
+    marginTop: spacing.lg,
+  },
+  subtitle: {
+    fontSize: 14,
+    lineHeight: 21,
+    maxWidth: 280,
+    marginTop: spacing.sm,
+  },
+  list: {
+    alignSelf: "stretch",
+    gap: 10,
+    marginTop: spacing.xl,
+  },
+  pill: {
+    borderRadius: radius.lg,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: colors.cardBorder,
+    backgroundColor: colors.cardFill,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+  },
+  pillText: {
+    fontSize: 14.5,
+    lineHeight: 22,
+    textAlign: "right",
+  },
 });

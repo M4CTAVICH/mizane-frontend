@@ -10,7 +10,8 @@ import {
   Platform,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { colors, spacing, radius, typography, textScale } from "../../constants/tokens";
+import { LinearGradient } from "expo-linear-gradient";
+import { colors, spacing, radius, typography } from "../../constants/tokens";
 import { useAssistantStore } from "../../store/assistantStore";
 import { useAuthStore } from "../../store/authStore";
 import { assistantApi } from "../../lib/api";
@@ -102,17 +103,14 @@ export default function AssistantScreen() {
               <TouchableOpacity hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
                 <Ionicons name="notifications-outline" size={22} color={colors.textMuted} />
               </TouchableOpacity>
-              <View style={{ alignItems: "flex-end" }}>
-                <Text style={textScale.label}>MIZANE · AI</Text>
-                <ArabicText
-                  size="heading"
-                  weight="semibold"
-                  color={colors.gold}
-                  style={styles.headerTitle}
-                >
-                  ميزان
-                </ArabicText>
-              </View>
+              <ArabicText
+                size="heading"
+                weight="semibold"
+                color={colors.textPrimary}
+                style={styles.headerTitle}
+              >
+                ميزان
+              </ArabicText>
             </View>
           </LiquidGlassContainer>
         </View>
@@ -138,10 +136,11 @@ export default function AssistantScreen() {
 
         {/* ── Glass composer pill (floats above the glass tab bar) ───── */}
         <View style={styles.composerWrap}>
-          <LiquidGlassContainer radius={radius.xl} padding={6} intensity={50}>
+          <View style={styles.composer}>
+            <View style={styles.composerHighlight} pointerEvents="none" />
             <View style={styles.inputRow}>
               <TouchableOpacity style={styles.micBtn} activeOpacity={0.7}>
-                <Ionicons name="mic-outline" size={22} color={colors.textMuted} />
+                <Ionicons name="mic-outline" size={18} color={colors.textMuted} />
               </TouchableOpacity>
               <TextInput
                 style={styles.input}
@@ -154,19 +153,21 @@ export default function AssistantScreen() {
                 onSubmitEditing={() => sendMessage(input)}
               />
               <TouchableOpacity
-                style={[styles.sendBtn, !input.trim() && styles.sendBtnDisabled]}
+                style={styles.sendBtn}
                 onPress={() => sendMessage(input)}
                 disabled={!input.trim()}
                 activeOpacity={0.8}
               >
-                <Ionicons
-                  name="arrow-up"
-                  size={20}
-                  color={input.trim() ? colors.inkBlue : colors.textMuted}
+                <LinearGradient
+                  colors={[colors.goldGradTop, colors.goldGradBottom]}
+                  start={{ x: 0.5, y: 0 }}
+                  end={{ x: 0.5, y: 1 }}
+                  style={StyleSheet.absoluteFill}
                 />
+                <Ionicons name="arrow-up" size={18} color={colors.inkBlue} />
               </TouchableOpacity>
             </View>
-          </LiquidGlassContainer>
+          </View>
         </View>
       </KeyboardAvoidingView>
     </View>
@@ -230,7 +231,7 @@ const styles = StyleSheet.create({
   chatContent: {
     paddingHorizontal: spacing.md,
     paddingTop: spacing.md,
-    paddingBottom: 220, // clear composer + floating tab bar
+    paddingBottom: 250, // clear composer + floating tab bar
     gap: spacing.xs,
   },
   chatEmpty: { flexGrow: 1 },
@@ -240,39 +241,56 @@ const styles = StyleSheet.create({
     position: "absolute",
     left: 16,
     right: 16,
-    bottom: Platform.OS === "ios" ? 110 : 96, // sit above the glass tab bar
+    bottom: Platform.OS === "ios" ? 140 : 124, // clear the floating dock with breathing room
+  },
+  // Flat matte composer pill (Figma 1:41).
+  composer: {
+    backgroundColor: colors.cardFill,
+    borderRadius: 26,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: colors.cardBorder,
+    paddingHorizontal: 13,
+    paddingVertical: 10,
+    overflow: "hidden",
+  },
+  composerHighlight: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 1,
+    backgroundColor: colors.cardHighlight,
   },
   inputRow: {
     flexDirection: "row-reverse",
-    alignItems: "flex-end",
-    gap: spacing.sm,
+    alignItems: "center",
+    gap: 12,
   },
   micBtn: {
-    width: 40,
-    height: 40,
+    width: 24,
+    height: 36,
     alignItems: "center",
     justifyContent: "center",
   },
   input: {
     flex: 1,
-    minHeight: 40,
+    minHeight: 36,
     maxHeight: 120,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
+    paddingHorizontal: 0,
+    paddingVertical: 0,
     fontSize: 15,
     fontFamily: typography.fontArabic,
     color: colors.textPrimary,
+    textAlign: "right",
     textAlignVertical: "center",
   },
   sendBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: colors.gold,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    overflow: "hidden",
+    backgroundColor: colors.glassFillStrong,
     alignItems: "center",
     justifyContent: "center",
-  },
-  sendBtnDisabled: {
-    backgroundColor: colors.glassFillStrong,
   },
 });

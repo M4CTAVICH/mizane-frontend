@@ -9,7 +9,9 @@ import {
   ScrollView,
   Platform,
 } from "react-native";
-import { colors, radius, spacing } from "../../constants/tokens";
+import { BlurView } from "expo-blur";
+import { LinearGradient } from "expo-linear-gradient";
+import { colors, radius, spacing, shadow } from "../../constants/tokens";
 import ArabicText from "../shared/ArabicText";
 import { Ionicons } from "@expo/vector-icons";
 
@@ -68,6 +70,17 @@ export default function BottomSheet({
           { maxHeight, transform: [{ translateY: slideAnim }] },
         ]}
       >
+        {/* Liquid Glass material — functional layer (floating sheet) */}
+        <BlurView intensity={50} tint="dark" style={styles.sheetClip} />
+        <View style={[styles.sheetClip, { backgroundColor: colors.glassFill }]} />
+        <LinearGradient
+          colors={[colors.glassHighlight, "rgba(255,255,255,0.03)", "transparent"]}
+          locations={[0, 0.18, 0.5]}
+          start={{ x: 0.2, y: 0 }}
+          end={{ x: 0.5, y: 1 }}
+          style={styles.sheetClip}
+          pointerEvents="none"
+        />
         <View style={styles.handle} />
         {title ? (
           <View style={styles.header}>
@@ -93,18 +106,28 @@ export default function BottomSheet({
 
 const styles = StyleSheet.create({
   overlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(0,0,0,0.5)",
+    ...StyleSheet.absoluteFill,
+    backgroundColor: "rgba(0,0,0,0.65)", // dark backdrop
   },
   sheet: {
     position: "absolute",
     bottom: 0,
     left: 0,
     right: 0,
-    backgroundColor: colors.surface1,
-    borderTopLeftRadius: radius.lg,
-    borderTopRightRadius: radius.lg,
+    borderTopLeftRadius: radius.xl, // glass container radius
+    borderTopRightRadius: radius.xl,
+    borderTopWidth: 1,
+    borderColor: colors.glassBorder, // specular hairline edge
+    overflow: "hidden",
     paddingBottom: Platform.OS === "ios" ? 34 : 24,
+    ...shadow.glass,
+  },
+  sheetClip: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
   },
   handle: {
     width: 40,

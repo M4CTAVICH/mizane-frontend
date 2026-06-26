@@ -1,18 +1,21 @@
 import React, { useState, useRef, useEffect } from "react";
 import {
   View,
+  Text,
   TextInput,
   TouchableOpacity,
   StyleSheet,
   SafeAreaView,
+  StatusBar,
   KeyboardAvoidingView,
   Platform,
 } from "react-native";
 import { useRouter } from "expo-router";
-import { colors, radius, spacing, typography } from "../../constants/tokens";
+import { colors, radius, shadow, spacing, typography, textScale } from "../../constants/tokens";
 import { useAuthStore, DEMO_USER } from "../../store/authStore";
 import Button from "../../components/ui/Button";
 import ArabicText from "../../components/shared/ArabicText";
+import { LiquidGlassContainer } from "../../components/ui/LiquidGlassContainer";
 
 export default function OTPScreen() {
   const router = useRouter();
@@ -73,10 +76,14 @@ export default function OTPScreen() {
       behavior={Platform.OS === "ios" ? "padding" : undefined}
     >
       <View style={styles.container}>
+        <StatusBar barStyle="light-content" />
         <SafeAreaView style={styles.safe}>
           <View style={styles.content}>
             {/* Header */}
             <View style={styles.header}>
+              <Text style={[textScale.label, styles.eyebrow]}>
+                MIZANE · VÉRIFICATION
+              </Text>
               <ArabicText size="display" weight="semibold" color={colors.textPrimary}>
                 {step === "phone" ? "أدخل رقمك" : "أدخل الرمز"}
               </ArabicText>
@@ -94,28 +101,45 @@ export default function OTPScreen() {
                     +213
                   </ArabicText>
                 </View>
-                <TextInput
-                  style={styles.phoneInput}
-                  value={phone}
-                  onChangeText={setPhone}
-                  keyboardType="phone-pad"
-                  placeholder="555 000 001"
-                  placeholderTextColor={colors.textMuted}
-                />
+                <LiquidGlassContainer
+                  style={styles.phoneGlass}
+                  radius={radius.md}
+                  padding={0}
+                  intensity={40}
+                >
+                  <TextInput
+                    style={styles.phoneInput}
+                    value={phone}
+                    onChangeText={setPhone}
+                    keyboardType="phone-pad"
+                    placeholder="555 000 001"
+                    placeholderTextColor={colors.textMuted}
+                  />
+                </LiquidGlassContainer>
               </View>
             ) : (
               <View style={styles.otpRow}>
                 {otp.map((digit, idx) => (
-                  <TextInput
+                  <LiquidGlassContainer
                     key={idx}
-                    ref={(r) => (inputRefs.current[idx] = r)}
-                    style={[styles.otpCell, digit ? styles.otpCellFilled : {}]}
-                    value={digit}
-                    onChangeText={(v) => handleOtpChange(v, idx)}
-                    keyboardType="numeric"
-                    maxLength={1}
-                    textAlign="center"
-                  />
+                    style={[styles.otpGlass, digit ? styles.otpGlassFilled : null]}
+                    radius={radius.md}
+                    padding={0}
+                    intensity={40}
+                    prominent={!!digit}
+                  >
+                    <TextInput
+                      ref={(r) => {
+                        inputRefs.current[idx] = r;
+                      }}
+                      style={[styles.otpCell, digit ? styles.otpCellFilled : null]}
+                      value={digit}
+                      onChangeText={(v) => handleOtpChange(v, idx)}
+                      keyboardType="numeric"
+                      maxLength={1}
+                      textAlign="center"
+                    />
+                  </LiquidGlassContainer>
                 ))}
               </View>
             )}
@@ -141,7 +165,7 @@ export default function OTPScreen() {
                 >
                   <ArabicText
                     size="caption"
-                    color={countdown > 0 ? colors.textMuted : colors.justiceGold}
+                    color={countdown > 0 ? colors.textMuted : colors.gold}
                     style={{ textAlign: "center", marginTop: spacing.sm }}
                   >
                     {countdown > 0
@@ -166,7 +190,7 @@ export default function OTPScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.parchment },
+  container: { flex: 1, backgroundColor: "transparent" },
   safe: { flex: 1 },
   content: {
     flex: 1,
@@ -175,6 +199,7 @@ const styles = StyleSheet.create({
     gap: spacing.lg,
   },
   header: { gap: spacing.sm, alignItems: "flex-end" },
+  eyebrow: { textAlign: "right" },
   phoneRow: {
     flexDirection: "row-reverse",
     gap: spacing.sm,
@@ -185,19 +210,15 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     borderRadius: radius.md,
     borderWidth: 1,
-    borderColor: colors.ink200,
-    backgroundColor: colors.surface2,
+    borderColor: colors.glassBorder,
+    backgroundColor: colors.glassFill,
     justifyContent: "center",
     minWidth: 64,
     alignItems: "center",
   },
+  phoneGlass: { flex: 1 },
   phoneInput: {
-    flex: 1,
     height: 48,
-    backgroundColor: colors.surface1,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: colors.ink200,
     paddingHorizontal: spacing.md,
     fontSize: 18,
     fontFamily: typography.fontMono,
@@ -211,21 +232,20 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
     justifyContent: "center",
   },
+  otpGlass: {},
+  otpGlassFilled: {
+    ...shadow.gold,
+  },
   otpCell: {
     width: 44,
     height: 56,
-    borderRadius: radius.md,
-    borderWidth: 1.5,
-    borderColor: colors.ink200,
-    backgroundColor: colors.surface1,
     fontSize: 22,
     fontFamily: typography.fontMono,
     color: colors.textPrimary,
     textAlign: "center",
   },
   otpCellFilled: {
-    borderColor: colors.justiceGold,
-    backgroundColor: `${colors.justiceGold}08`,
+    color: colors.gold,
   },
   skip: {
     paddingBottom: spacing.xl,

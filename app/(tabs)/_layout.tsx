@@ -4,21 +4,53 @@ import {
   TouchableOpacity,
   View,
   StyleSheet,
-  Text,
   Platform,
 } from "react-native";
+import { BlurView } from "expo-blur";
+import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
-import { colors, shadow, spacing, typography } from "../../constants/tokens";
+import { colors, shadow, typography } from "../../constants/tokens";
 
+/** Floating Liquid Glass background for the tab bar (functional layer). */
+function GlassTabBackground() {
+  return (
+    <View style={styles.glassClip}>
+      <BlurView intensity={50} tint="dark" style={StyleSheet.absoluteFill} />
+      <View style={[StyleSheet.absoluteFill, { backgroundColor: colors.glassFill }]} />
+      {/* Specular "liquid" light catch along the top edge */}
+      <LinearGradient
+        colors={[colors.glassHighlight, "rgba(255,255,255,0.04)", "transparent"]}
+        locations={[0, 0.2, 0.6]}
+        start={{ x: 0.2, y: 0 }}
+        end={{ x: 0.5, y: 1 }}
+        style={StyleSheet.absoluteFill}
+        pointerEvents="none"
+      />
+    </View>
+  );
+}
+
+/** Glowing "liquid gold" primary action — raised above the bar. */
 function ScanButton({ onPress }: { onPress: () => void }) {
   return (
-    <TouchableOpacity
-      style={styles.scanButton}
-      onPress={onPress}
-      activeOpacity={0.85}
-    >
-      <Ionicons name="camera-outline" size={28} color="#fff" />
-    </TouchableOpacity>
+    <View style={styles.scanWrap} pointerEvents="box-none">
+      <TouchableOpacity
+        style={styles.scanButton}
+        onPress={onPress}
+        activeOpacity={0.85}
+      >
+        {/* Specular top highlight on the gold dome */}
+        <LinearGradient
+          colors={["rgba(255,255,255,0.45)", "rgba(255,255,255,0.05)", "transparent"]}
+          locations={[0, 0.4, 0.75]}
+          start={{ x: 0.3, y: 0 }}
+          end={{ x: 0.5, y: 1 }}
+          style={StyleSheet.absoluteFill}
+          pointerEvents="none"
+        />
+        <Ionicons name="scan-outline" size={26} color={colors.inkBlue} />
+      </TouchableOpacity>
+    </View>
   );
 }
 
@@ -27,13 +59,16 @@ export default function TabsLayout() {
 
   return (
     <Tabs
-      screenOptions={({ route }) => ({
+      screenOptions={{
         headerShown: false,
         tabBarStyle: styles.tabBar,
-        tabBarActiveTintColor: colors.justiceGold,
+        tabBarBackground: () => <GlassTabBackground />,
+        tabBarActiveTintColor: colors.gold,
         tabBarInactiveTintColor: colors.textMuted,
         tabBarLabelStyle: styles.tabLabel,
-      })}
+        tabBarItemStyle: styles.tabItem,
+        sceneStyle: { backgroundColor: "transparent" },
+      }}
     >
       <Tabs.Screen
         name="index"
@@ -58,9 +93,7 @@ export default function TabsLayout() {
         options={{
           title: "",
           tabBarIcon: () => null,
-          tabBarButton: () => (
-            <ScanButton onPress={() => router.push("/scan")} />
-          ),
+          tabBarButton: () => <ScanButton onPress={() => router.push("/scan")} />,
         }}
       />
       <Tabs.Screen
@@ -85,29 +118,59 @@ export default function TabsLayout() {
   );
 }
 
+const TAB_BAR_RADIUS = 28;
+
 const styles = StyleSheet.create({
+  // Floating glass pill, detached from the screen edges.
   tabBar: {
-    backgroundColor: colors.surface1,
-    borderTopWidth: 1,
-    borderTopColor: colors.ink200,
-    height: Platform.OS === "ios" ? 84 : 64,
-    paddingBottom: Platform.OS === "ios" ? 24 : 8,
-    paddingTop: 8,
-    ...shadow.sm,
+    position: "absolute",
+    left: 16,
+    right: 16,
+    bottom: Platform.OS === "ios" ? 28 : 18,
+    height: 66,
+    borderRadius: TAB_BAR_RADIUS,
+    borderTopWidth: 0,
+    paddingTop: 10,
+    paddingBottom: 10,
+    backgroundColor: "transparent",
+    ...shadow.glass,
+  },
+  glassClip: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    borderRadius: TAB_BAR_RADIUS,
+    borderWidth: 1,
+    borderColor: colors.glassBorder,
+    overflow: "hidden",
+  },
+  tabItem: {
+    paddingTop: 4,
   },
   tabLabel: {
     fontFamily: typography.fontArabic,
-    fontSize: 11,
+    fontSize: 10,
+    marginTop: 2,
   },
-  scanButton: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: colors.justiceGold,
+  // Raised gold dome breaking the top edge of the bar.
+  scanWrap: {
+    flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    marginTop: -20,
-    ...shadow.md,
-    shadowColor: colors.justiceGold,
+  },
+  scanButton: {
+    width: 58,
+    height: 58,
+    borderRadius: 29,
+    marginTop: -26,
+    backgroundColor: colors.gold,
+    alignItems: "center",
+    justifyContent: "center",
+    overflow: "hidden",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.35)",
+    ...shadow.gold,
   },
 });

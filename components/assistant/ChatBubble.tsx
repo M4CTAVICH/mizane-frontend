@@ -57,7 +57,7 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.sm,
   },
   bubbleUser: {
-    backgroundColor: colors.justiceGold,
+    backgroundColor: colors.gold, // vibrant gold accent
     borderBottomRightRadius: radius.sm,
   },
   bubbleAssistant: {
@@ -80,6 +80,6 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: colors.justiceGold,
+    backgroundColor: colors.gold,
   },
 });

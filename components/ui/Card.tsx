@@ -1,6 +1,6 @@
 import React from "react";
 import { View, StyleSheet, ViewStyle } from "react-native";
-import { colors, radius, spacing, shadow } from "../../constants/tokens";
+import { colors, radius, spacing } from "../../constants/tokens";
 
 type CardVariant = "default" | "flagged" | "verified";
 
@@ -23,7 +23,6 @@ export default function Card({
         styles.base,
         styles[variant],
         { padding },
-        shadow.sm,
         style,
       ]}
     >
@@ -34,18 +33,18 @@ export default function Card({
 
 const styles = StyleSheet.create({
   base: {
-    backgroundColor: colors.surface1,
+    backgroundColor: colors.surface1, // deep absorbent content layer (#0B0B0D)
     borderRadius: radius.lg,
     borderWidth: 1,
-    borderColor: colors.ink200,
+    borderColor: colors.ink200, // hairline white/10
   },
   default: {},
   flagged: {
     backgroundColor: colors.dangerLight,
-    borderColor: colors.danger,
+    borderColor: "rgba(248,113,113,0.45)",
   },
   verified: {
     backgroundColor: colors.safeLight,
-    borderColor: colors.safe,
+    borderColor: "rgba(45,212,167,0.45)",
   },
 });

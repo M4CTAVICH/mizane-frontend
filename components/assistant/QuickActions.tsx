@@ -2,8 +2,9 @@ import React from "react";
 import { View, TouchableOpacity, StyleSheet } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import { colors, radius, shadow, spacing } from "../../constants/tokens";
+import { colors, radius, spacing } from "../../constants/tokens";
 import ArabicText from "../shared/ArabicText";
+import ContentCard from "../ui/ContentCard";
 
 const QUICK_ACTIONS = [
   {
@@ -65,19 +66,21 @@ export default function QuickActions({ onActionPress }: QuickActionsProps) {
         {QUICK_ACTIONS.map((action) => (
           <TouchableOpacity
             key={action.id}
-            style={styles.card}
+            style={styles.cardWrap}
             onPress={() => handlePress(action)}
             activeOpacity={0.8}
           >
-            <View style={styles.iconContainer}>
-              <Ionicons name={action.icon as any} size={24} color={colors.justiceGold} />
-            </View>
-            <ArabicText weight="medium" color={colors.textPrimary} style={styles.label}>
-              {action.label}
-            </ArabicText>
-            <ArabicText size="caption" color={colors.textMuted} style={styles.sublabel}>
-              {action.sublabel}
-            </ArabicText>
+            <ContentCard variant="raised" style={styles.card}>
+              <View style={styles.iconContainer}>
+                <Ionicons name={action.icon as any} size={24} color={colors.gold} />
+              </View>
+              <ArabicText weight="medium" color={colors.textPrimary} style={styles.label}>
+                {action.label}
+              </ArabicText>
+              <ArabicText size="caption" color={colors.textMuted} style={styles.sublabel}>
+                {action.sublabel}
+              </ArabicText>
+            </ContentCard>
           </TouchableOpacity>
         ))}
       </View>
@@ -96,21 +99,17 @@ const styles = StyleSheet.create({
     flexWrap: "wrap",
     gap: spacing.sm,
   },
-  card: {
+  cardWrap: {
     width: "48%",
-    backgroundColor: colors.surface1,
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: colors.ink200,
-    padding: spacing.md,
+  },
+  card: {
     gap: spacing.xs,
-    ...shadow.sm,
   },
   iconContainer: {
     width: 44,
     height: 44,
     borderRadius: radius.md,
-    backgroundColor: `${colors.justiceGold}15`,
+    backgroundColor: `${colors.gold}1F`, // vibrant gold tint
     alignItems: "center",
     justifyContent: "center",
     alignSelf: "flex-end",

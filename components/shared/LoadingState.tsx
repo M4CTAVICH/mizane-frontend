@@ -16,7 +16,7 @@ export default function LoadingState({
 }: LoadingStateProps) {
   return (
     <View style={[styles.container, fullScreen && styles.fullScreen]}>
-      <ActivityIndicator size={size} color={colors.justiceGold} />
+      <ActivityIndicator size={size} color={colors.gold} />
       {message ? (
         <ArabicText size="caption" color={colors.textMuted} style={styles.text}>
           {message}
@@ -35,7 +35,7 @@ const styles = StyleSheet.create({
   },
   fullScreen: {
     flex: 1,
-    backgroundColor: colors.surface0,
+    backgroundColor: "transparent", // let the root fluid mesh show through
   },
   text: {
     marginTop: 8,

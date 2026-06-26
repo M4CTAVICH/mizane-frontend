@@ -12,13 +12,14 @@ import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import * as ImagePicker from "expo-image-picker";
-import { colors, radius, spacing, typography } from "../../constants/tokens";
+import { colors, radius, spacing } from "../../constants/tokens";
 import ArabicText from "../../components/shared/ArabicText";
 import LoadingState from "../../components/shared/LoadingState";
 import BottomSheet from "../../components/ui/BottomSheet";
 import DNAResult from "../../components/scan/DNAResult";
 import Button from "../../components/ui/Button";
-import Card from "../../components/ui/Card";
+import ContentCard from "../../components/ui/ContentCard";
+import { LiquidGlassContainer } from "../../components/ui/LiquidGlassContainer";
 import { scanApi } from "../../lib/api";
 
 const DNA_CHECKS_DEMO = [
@@ -84,15 +85,15 @@ export default function ScanScreen() {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.permContainer}>
-          <Ionicons name="camera-outline" size={64} color={colors.justiceGold} />
-          <ArabicText size="heading" weight="semibold" color={colors.parchment} style={{ textAlign: "center" }}>
+          <Ionicons name="camera-outline" size={64} color={colors.gold} />
+          <ArabicText size="heading" weight="semibold" color={colors.textPrimary} style={{ textAlign: "center" }}>
             نحتاج صلاحية الكاميرا
           </ArabicText>
           <Button variant="primary" onPress={requestPermission}>
             منح الصلاحية
           </Button>
           <TouchableOpacity onPress={() => router.back()}>
-            <ArabicText size="caption" color={colors.ink300}>
+            <ArabicText size="caption" color={colors.textSecondary}>
               إغلاق
             </ArabicText>
           </TouchableOpacity>
@@ -112,16 +113,18 @@ export default function ScanScreen() {
 
       {/* Overlay */}
       <View style={StyleSheet.absoluteFill}>
-        {/* Top bar */}
+        {/* Top bar — glass chrome over the camera feed */}
         <SafeAreaView>
           <View style={styles.topBar}>
             <TouchableOpacity
-              style={styles.closeBtn}
               onPress={() => router.back()}
+              activeOpacity={0.8}
             >
-              <Ionicons name="close" size={24} color="#fff" />
+              <LiquidGlassContainer radius={radius.full} padding={8} intensity={40}>
+                <Ionicons name="close" size={22} color={colors.textPrimary} />
+              </LiquidGlassContainer>
             </TouchableOpacity>
-            <ArabicText weight="semibold" color="#fff" style={styles.topTitle}>
+            <ArabicText weight="semibold" color={colors.textPrimary} style={styles.topTitle}>
               فحص وثيقة
             </ArabicText>
           </View>
@@ -183,7 +186,7 @@ export default function ScanScreen() {
         {result && (
           <View style={styles.resultsContent}>
             {/* Document type */}
-            <Card variant={result.authentic ? "verified" : "flagged"}>
+            <ContentCard variant={result.authentic ? "verified" : "flagged"}>
               <View style={styles.resultRow}>
                 <Ionicons
                   name={result.authentic ? "checkmark-circle" : "warning"}
@@ -196,27 +199,27 @@ export default function ScanScreen() {
                   </ArabicText>
                 </View>
               </View>
-            </Card>
+            </ContentCard>
 
             {/* Summary in Darija */}
             <View style={styles.section}>
               <View style={styles.sectionHeader}>
-                <Ionicons name="chatbubble-outline" size={16} color={colors.justiceGold} />
+                <Ionicons name="chatbubble-outline" size={16} color={colors.gold} />
                 <ArabicText weight="medium" color={colors.textPrimary}>
                   ملخص بالدارجة
                 </ArabicText>
               </View>
-              <Card>
+              <ContentCard>
                 <ArabicText color={colors.textSecondary} style={{ lineHeight: 24 }}>
                   {result.summaryDarija}
                 </ArabicText>
-              </Card>
+              </ContentCard>
             </View>
 
             {/* DNA checks */}
             <View style={styles.section}>
               <View style={styles.sectionHeader}>
-                <Ionicons name="fitness-outline" size={16} color={colors.justiceGold} />
+                <Ionicons name="fitness-outline" size={16} color={colors.gold} />
                 <ArabicText weight="medium" color={colors.textPrimary}>
                   فحص الأصالة
                 </ArabicText>
@@ -233,7 +236,7 @@ export default function ScanScreen() {
                     بنود مشبوهة
                   </ArabicText>
                 </View>
-                <Card variant="flagged">
+                <ContentCard variant="flagged">
                   {result.flags.map((flag, idx) => (
                     <View key={idx} style={styles.flagItem}>
                       <ArabicText weight="medium" color={colors.danger}>
@@ -244,7 +247,7 @@ export default function ScanScreen() {
                       </ArabicText>
                     </View>
                   ))}
-                </Card>
+                </ContentCard>
               </View>
             )}
 
@@ -289,7 +292,7 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#000" },
   permContainer: {
     flex: 1,
-    backgroundColor: colors.inkBlue,
+    backgroundColor: "transparent",
     alignItems: "center",
     justifyContent: "center",
     gap: spacing.lg,
@@ -303,14 +306,6 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.md,
   },
   topTitle: { fontSize: 17 },
-  closeBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: "rgba(0,0,0,0.4)",
-    alignItems: "center",
-    justifyContent: "center",
-  },
   frameContainer: {
     flex: 1,
     alignItems: "center",
@@ -325,7 +320,7 @@ const styles = StyleSheet.create({
     position: "absolute",
     width: CORNER_SIZE,
     height: CORNER_SIZE,
-    borderColor: colors.justiceGold,
+    borderColor: colors.gold,
   },
   cornerTL: {
     top: 0,
@@ -356,7 +351,7 @@ const styles = StyleSheet.create({
     borderBottomRightRadius: 4,
   },
   processingOverlay: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     backgroundColor: "rgba(0,0,0,0.75)",
     alignItems: "center",
     justifyContent: "center",
@@ -387,7 +382,7 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: colors.justiceGold,
+    backgroundColor: colors.gold,
   },
   resultsContent: { gap: spacing.md },
   section: { gap: spacing.sm },

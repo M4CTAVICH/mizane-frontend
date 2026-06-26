@@ -2,9 +2,10 @@ import React from "react";
 import { TouchableOpacity, View, StyleSheet } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import { colors, radius, shadow, spacing } from "../../constants/tokens";
+import { colors, radius, spacing } from "../../constants/tokens";
 import { DocumentType } from "../../constants/tokens";
 import ArabicText from "../shared/ArabicText";
+import ContentCard from "../ui/ContentCard";
 import StatusPill from "../ui/StatusPill";
 import ProofBadge from "../shared/ProofBadge";
 import type { VaultDocument } from "../../store/vaultStore";
@@ -24,6 +25,20 @@ export default function DocumentCard({ document: doc }: DocumentCardProps) {
   const docInfo = DocumentType[doc.type];
   const days = daysUntil(doc.expiresAt);
 
+  // Trust state → content-layer variant (Apple HIG): expired = flagged,
+  // proof-anchored = verified, everything else = default deep matte.
+  const variant =
+    doc.status === "expired" ? "flagged" : doc.anchorRef ? "verified" : "default";
+
+  const accent =
+    doc.status === "expired"
+      ? colors.danger
+      : doc.status === "expiring"
+        ? colors.caution
+        : doc.anchorRef
+          ? colors.safe
+          : colors.gold;
+
   const expiryText =
     doc.status === "expiring" && days !== null && days > 0
       ? `تنتهي خلال ${days} يوم`
@@ -35,60 +50,44 @@ export default function DocumentCard({ document: doc }: DocumentCardProps) {
 
   return (
     <TouchableOpacity
-      style={[
-        styles.card,
-        doc.status === "expiring" && styles.cardExpiring,
-        doc.status === "expired" && styles.cardExpired,
-      ]}
       onPress={() => router.push(`/vault/${doc.id}`)}
-      activeOpacity={0.8}
+      activeOpacity={0.85}
     >
-      <View style={styles.iconCol}>
-        <View
-          style={[
-            styles.iconBg,
-            doc.status === "expired" ? styles.iconBgExpired : {},
-          ]}
-        >
-          <Ionicons
-            name={docInfo?.icon as any ?? "document-outline"}
-            size={22}
-            color={
-              doc.status === "expired"
-                ? colors.danger
-                : doc.status === "expiring"
-                  ? colors.caution
-                  : colors.justiceGold
-            }
-          />
+      <ContentCard variant={variant} style={styles.card}>
+        <View style={styles.iconCol}>
+          <View style={[styles.iconBg, { backgroundColor: `${accent}1F` }]}>
+            <Ionicons
+              name={docInfo?.icon as any ?? "document-outline"}
+              size={22}
+              color={accent}
+            />
+          </View>
         </View>
-      </View>
-      <View style={styles.center}>
-        <ArabicText weight="medium" color={colors.textPrimary} numberOfLines={1}>
-          {doc.name}
-        </ArabicText>
-        {expiryText ? (
-          <ArabicText
-            size="caption"
-            color={
-              doc.status === "expiring"
-                ? colors.caution
-                : doc.status === "expired"
-                  ? colors.danger
-                  : colors.textMuted
-            }
-          >
-            {expiryText}
+        <View style={styles.center}>
+          <ArabicText weight="medium" color={colors.textPrimary} numberOfLines={1}>
+            {doc.name}
           </ArabicText>
-        ) : null}
-        {doc.anchorRef ? (
-          <ProofBadge timestamp={doc.expiresAt} />
-        ) : null}
-      </View>
-      <View style={styles.rightCol}>
-        <StatusPill status={doc.status} />
-        <Ionicons name="chevron-back" size={16} color={colors.textMuted} />
-      </View>
+          {expiryText ? (
+            <ArabicText
+              size="caption"
+              color={
+                doc.status === "expiring"
+                  ? colors.caution
+                  : doc.status === "expired"
+                    ? colors.danger
+                    : colors.textMuted
+              }
+            >
+              {expiryText}
+            </ArabicText>
+          ) : null}
+          {doc.anchorRef ? <ProofBadge timestamp={doc.expiresAt} /> : null}
+        </View>
+        <View style={styles.rightCol}>
+          <StatusPill status={doc.status} />
+          <Ionicons name="chevron-back" size={16} color={colors.textMuted} />
+        </View>
+      </ContentCard>
     </TouchableOpacity>
   );
 }
@@ -97,32 +96,16 @@ const styles = StyleSheet.create({
   card: {
     flexDirection: "row-reverse",
     alignItems: "center",
-    backgroundColor: colors.surface1,
-    borderRadius: radius.lg,
-    padding: spacing.md,
     gap: spacing.sm,
-    borderWidth: 1,
-    borderColor: colors.ink200,
-    ...shadow.sm,
-  },
-  cardExpiring: {
-    borderColor: colors.caution,
-    backgroundColor: colors.cautionLight,
-  },
-  cardExpired: {
-    borderColor: colors.danger,
-    backgroundColor: colors.dangerLight,
   },
   iconCol: {},
   iconBg: {
     width: 44,
     height: 44,
     borderRadius: radius.md,
-    backgroundColor: `${colors.justiceGold}15`,
     alignItems: "center",
     justifyContent: "center",
   },
-  iconBgExpired: { backgroundColor: `${colors.danger}15` },
   center: {
     flex: 1,
     gap: 4,

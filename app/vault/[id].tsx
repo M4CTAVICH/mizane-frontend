@@ -6,17 +6,20 @@ import {
   SafeAreaView,
   ScrollView,
   Alert,
+  Platform,
 } from "react-native";
+import { BlurView } from "expo-blur";
+import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { colors, radius, shadow, spacing, typography } from "../../constants/tokens";
+import { colors, radius, spacing, typography } from "../../constants/tokens";
 import { useVaultStore } from "../../store/vaultStore";
 import { DocumentType } from "../../constants/tokens";
 import ArabicText from "../../components/shared/ArabicText";
 import StatusPill from "../../components/ui/StatusPill";
 import ProofBadge from "../../components/shared/ProofBadge";
 import Button from "../../components/ui/Button";
-import Card from "../../components/ui/Card";
+import ContentCard from "../../components/ui/ContentCard";
 import { mockAnchor } from "../../lib/proof";
 
 function daysUntil(dateStr?: string): number | null {
@@ -60,19 +63,32 @@ export default function DocumentDetailScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* Header */}
+      {/* ── Glass header (functional layer) ───────────────────────── */}
       <View style={styles.header}>
-        <TouchableOpacity
-          style={styles.backBtn}
-          onPress={() => router.back()}
-          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-        >
-          <Ionicons name="arrow-forward" size={22} color={colors.textPrimary} />
-        </TouchableOpacity>
-        <ArabicText weight="semibold" color={colors.textPrimary} numberOfLines={1}>
-          {doc.name}
-        </ArabicText>
-        <View style={{ width: 36 }} />
+        <BlurView intensity={50} tint="dark" style={StyleSheet.absoluteFill} />
+        <View style={[StyleSheet.absoluteFill, { backgroundColor: colors.glassFill }]} />
+        <LinearGradient
+          colors={[colors.glassHighlight, "rgba(255,255,255,0.03)", "transparent"]}
+          locations={[0, 0.4, 1]}
+          start={{ x: 0.2, y: 0 }}
+          end={{ x: 0.5, y: 1 }}
+          style={StyleSheet.absoluteFill}
+          pointerEvents="none"
+        />
+        <View style={styles.headerRow}>
+          <TouchableOpacity
+            style={styles.backBtn}
+            onPress={() => router.back()}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
+            <Ionicons name="arrow-forward" size={22} color={colors.textPrimary} />
+          </TouchableOpacity>
+          <ArabicText weight="semibold" color={colors.textPrimary} numberOfLines={1}>
+            {doc.name}
+          </ArabicText>
+          <View style={{ width: 36 }} />
+        </View>
+        <View style={styles.headerHairline} />
       </View>
 
       <ScrollView
@@ -97,13 +113,13 @@ export default function DocumentDetailScreen() {
           </View>
         )}
 
-        {/* Document preview card */}
-        <Card style={styles.previewCard}>
+        {/* Document preview card (content layer) */}
+        <ContentCard variant="raised" style={styles.previewCard}>
           <View style={styles.previewIcon}>
             <Ionicons
               name={docInfo?.icon as any ?? "document-outline"}
               size={48}
-              color={colors.justiceGold}
+              color={colors.gold}
             />
           </View>
           <ArabicText size="heading" weight="semibold" color={colors.textPrimary} style={{ textAlign: "center" }}>
@@ -120,10 +136,10 @@ export default function DocumentDetailScreen() {
           {doc.anchorRef && (
             <ProofBadge timestamp={doc.expiresAt} />
           )}
-        </Card>
+        </ContentCard>
 
-        {/* Metadata */}
-        <Card>
+        {/* Metadata (content layer) */}
+        <ContentCard>
           <View style={styles.metaRow}>
             <ArabicText size="caption" color={colors.textMuted}>نوع الوثيقة</ArabicText>
             <ArabicText size="caption" color={colors.textSecondary} weight="medium">
@@ -150,7 +166,7 @@ export default function DocumentDetailScreen() {
               </ArabicText>
             </View>
           )}
-        </Card>
+        </ContentCard>
 
         {/* Actions */}
         <View style={styles.actions}>
@@ -176,17 +192,27 @@ export default function DocumentDetailScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.surface0 },
+  container: { flex: 1, backgroundColor: "transparent" },
   notFound: { flex: 1, alignItems: "center", justifyContent: "center", gap: spacing.md },
+  // Glass header
   header: {
+    paddingTop: Platform.OS === "ios" ? spacing.sm : spacing.md,
+    paddingBottom: spacing.md,
+    paddingHorizontal: spacing.lg,
+    overflow: "hidden",
+  },
+  headerRow: {
     flexDirection: "row-reverse",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
-    backgroundColor: colors.surface1,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.ink200,
+  },
+  headerHairline: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: colors.glassBorder,
   },
   backBtn: {
     width: 36,
@@ -228,7 +254,7 @@ const styles = StyleSheet.create({
     width: 88,
     height: 88,
     borderRadius: radius.lg,
-    backgroundColor: `${colors.justiceGold}15`,
+    backgroundColor: `${colors.gold}1F`,
     alignItems: "center",
     justifyContent: "center",
     marginBottom: spacing.sm,

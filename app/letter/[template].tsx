@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import {
   View,
+  Text,
   TouchableOpacity,
   StyleSheet,
   SafeAreaView,
@@ -9,14 +10,37 @@ import {
   Alert,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { BlurView } from "expo-blur";
+import { LinearGradient } from "expo-linear-gradient";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { colors, radius, shadow, spacing, typography } from "../../constants/tokens";
+import { colors, radius, shadow, spacing, typography, textScale } from "../../constants/tokens";
 import { TEMPLATES } from "../../constants/tokens";
 import { useAuthStore } from "../../store/authStore";
 import ArabicText from "../../components/shared/ArabicText";
 import Button from "../../components/ui/Button";
-import Card from "../../components/ui/Card";
+import ContentCard from "../../components/ui/ContentCard";
+import { LiquidGlassContainer } from "../../components/ui/LiquidGlassContainer";
 import CitationCard from "../../components/assistant/CitationCard";
+
+/** Floating glass header (functional layer) shared across the letter steps. */
+function GlassHeader({ children }: { children: React.ReactNode }) {
+  return (
+    <View style={styles.header}>
+      <BlurView intensity={50} tint="dark" style={StyleSheet.absoluteFill} />
+      <View style={[StyleSheet.absoluteFill, { backgroundColor: colors.glassFill }]} />
+      <LinearGradient
+        colors={[colors.glassHighlight, "rgba(255,255,255,0.03)", "transparent"]}
+        locations={[0, 0.4, 1]}
+        start={{ x: 0.2, y: 0 }}
+        end={{ x: 0.5, y: 1 }}
+        style={StyleSheet.absoluteFill}
+        pointerEvents="none"
+      />
+      <View style={styles.headerRow}>{children}</View>
+      <View style={styles.headerHairline} />
+    </View>
+  );
+}
 
 const DEMO_LETTER = `السيد المحترم / السيدة المحترمة،
 
@@ -78,7 +102,7 @@ export default function LetterScreen() {
   if (step === "select") {
     return (
       <SafeAreaView style={styles.container}>
-        <View style={styles.header}>
+        <GlassHeader>
           <TouchableOpacity onPress={() => router.back()}>
             <Ionicons name="arrow-forward" size={22} color={colors.textPrimary} />
           </TouchableOpacity>
@@ -86,7 +110,7 @@ export default function LetterScreen() {
             اختر نوع الرسالة
           </ArabicText>
           <View style={{ width: 36 }} />
-        </View>
+        </GlassHeader>
         <ScrollView contentContainerStyle={styles.templateGrid}>
           {TEMPLATES.map((t) => (
             <TouchableOpacity
@@ -102,14 +126,14 @@ export default function LetterScreen() {
               activeOpacity={0.8}
             >
               <View style={styles.templateIcon}>
-                <Ionicons name={t.icon as any} size={24} color={colors.justiceGold} />
+                <Ionicons name={t.icon as any} size={24} color={colors.gold} />
               </View>
               <ArabicText weight="medium" color={colors.textPrimary} style={{ textAlign: "center", fontSize: 14 }}>
                 {t.label}
               </ArabicText>
-              <ArabicText size="caption" color={colors.textMuted} style={{ textAlign: "center", fontFamily: typography.fontLatin }}>
+              <Text style={[textScale.label, { textAlign: "center" }]}>
                 {t.labelFr}
-              </ArabicText>
+              </Text>
             </TouchableOpacity>
           ))}
         </ScrollView>
@@ -120,7 +144,7 @@ export default function LetterScreen() {
   if (step === "form") {
     return (
       <SafeAreaView style={styles.container}>
-        <View style={styles.header}>
+        <GlassHeader>
           <TouchableOpacity onPress={() => setStep("select")}>
             <Ionicons name="arrow-forward" size={22} color={colors.textPrimary} />
           </TouchableOpacity>
@@ -128,14 +152,14 @@ export default function LetterScreen() {
             {selectedTemplate.label}
           </ArabicText>
           <View style={{ width: 36 }} />
-        </View>
+        </GlassHeader>
 
         <ScrollView contentContainerStyle={styles.formContent}>
           {/* Auto-filled from vault */}
           <ArabicText size="heading" weight="semibold" color={colors.textPrimary}>
             بياناتك
           </ArabicText>
-          <Card>
+          <ContentCard>
             <View style={styles.autoFillRow}>
               <Ionicons name="checkmark-circle" size={16} color={colors.safe} />
               <ArabicText size="caption" color={colors.textMuted}>
@@ -160,7 +184,7 @@ export default function LetterScreen() {
                 {user?.address ?? "حي 20 أوت، وهران"}
               </ArabicText>
             </View>
-          </Card>
+          </ContentCard>
 
           <ArabicText size="heading" weight="semibold" color={colors.textPrimary}>
             وصف الحالة
@@ -176,14 +200,20 @@ export default function LetterScreen() {
             textAlignVertical="top"
           />
 
-          <Button
-            variant="primary"
-            size="lg"
-            loading={generating}
+          <TouchableOpacity
             onPress={handleGenerate}
+            disabled={generating}
+            activeOpacity={0.85}
+            style={generating && { opacity: 0.6 }}
           >
-            {generating ? "جارٍ توليد الرسالة..." : "توليد الرسالة بالذكاء الاصطناعي"}
-          </Button>
+            <LiquidGlassContainer radius={radius.xl} padding={0} intensity={50} prominent style={shadow.gold}>
+              <View style={styles.glassCta}>
+                <ArabicText weight="semibold" color={colors.gold} style={{ fontSize: 16 }}>
+                  {generating ? "جارٍ توليد الرسالة..." : "توليد الرسالة بالذكاء الاصطناعي"}
+                </ArabicText>
+              </View>
+            </LiquidGlassContainer>
+          </TouchableOpacity>
         </ScrollView>
       </SafeAreaView>
     );
@@ -192,7 +222,7 @@ export default function LetterScreen() {
   // Preview step
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
+      <GlassHeader>
         <TouchableOpacity onPress={() => setStep("form")}>
           <Ionicons name="arrow-forward" size={22} color={colors.textPrimary} />
         </TouchableOpacity>
@@ -200,13 +230,13 @@ export default function LetterScreen() {
           معاينة الرسالة
         </ArabicText>
         <TouchableOpacity>
-          <Ionicons name="pencil-outline" size={22} color={colors.justiceGold} />
+          <Ionicons name="pencil-outline" size={22} color={colors.gold} />
         </TouchableOpacity>
-      </View>
+      </GlassHeader>
 
       <ScrollView contentContainerStyle={styles.previewContent}>
         {/* Letter card */}
-        <View style={styles.letterCard}>
+        <ContentCard variant="raised" padding={spacing.lg} style={styles.letterCard}>
           {/* Letter header */}
           <View style={styles.letterHeader}>
             <ArabicText size="caption" color={colors.textMuted}>
@@ -223,7 +253,7 @@ export default function LetterScreen() {
           >
             {letterContent}
           </ArabicText>
-        </View>
+        </ContentCard>
 
         {/* Citations */}
         <View style={styles.citationsSection}>
@@ -253,16 +283,24 @@ export default function LetterScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.surface0 },
+  container: { flex: 1, backgroundColor: "transparent" },
   header: {
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+    overflow: "hidden",
+  },
+  headerRow: {
     flexDirection: "row-reverse",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
-    backgroundColor: colors.surface1,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.ink200,
+  },
+  headerHairline: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: colors.glassBorder,
   },
   templateGrid: {
     padding: spacing.md,
@@ -282,15 +320,21 @@ const styles = StyleSheet.create({
     ...shadow.sm,
   },
   templateCardSelected: {
-    borderColor: colors.justiceGold,
+    borderColor: colors.gold,
   },
   templateIcon: {
     width: 52,
     height: 52,
     borderRadius: radius.md,
-    backgroundColor: `${colors.justiceGold}15`,
+    backgroundColor: `${colors.gold}15`,
     alignItems: "center",
     justifyContent: "center",
+  },
+  glassCta: {
+    height: 56,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: spacing.lg,
   },
   formContent: {
     padding: spacing.md,
@@ -332,13 +376,7 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.xxl,
   },
   letterCard: {
-    backgroundColor: colors.surface1,
-    borderRadius: radius.lg,
-    padding: spacing.lg,
-    borderWidth: 1,
-    borderColor: colors.ink200,
     gap: spacing.md,
-    ...shadow.sm,
   },
   letterHeader: {
     flexDirection: "row-reverse",

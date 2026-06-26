@@ -40,6 +40,8 @@ export default function StatusPill({ status, label }: StatusPillProps) {
 const styles = StyleSheet.create({
   pill: {
     borderRadius: radius.full,
+    borderWidth: 1,
+    borderColor: colors.ink200, // hairline white/10
     paddingHorizontal: spacing.sm,
     paddingVertical: 3,
     alignSelf: "flex-start",

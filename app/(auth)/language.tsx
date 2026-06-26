@@ -1,18 +1,20 @@
 import React, { useState } from "react";
 import {
   View,
+  Text,
   TouchableOpacity,
   StyleSheet,
   SafeAreaView,
+  StatusBar,
   ScrollView,
 } from "react-native";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
-import { colors, radius, shadow, spacing, typography } from "../../constants/tokens";
+import { colors, radius, spacing, typography, textScale } from "../../constants/tokens";
 import { useAuthStore } from "../../store/authStore";
 import Button from "../../components/ui/Button";
 import ArabicText from "../../components/shared/ArabicText";
-import { Text } from "react-native";
+import ContentCard from "../../components/ui/ContentCard";
 
 type Lang = "ar" | "fr" | "dar" | "ber";
 
@@ -48,6 +50,7 @@ export default function LanguageScreen() {
 
   return (
     <View style={styles.container}>
+      <StatusBar barStyle="light-content" />
       <SafeAreaView style={styles.safe}>
         <ScrollView
           contentContainerStyle={styles.scroll}
@@ -55,6 +58,7 @@ export default function LanguageScreen() {
         >
           {/* Header */}
           <View style={styles.header}>
+            <Text style={[textScale.label, styles.eyebrow]}>MIZANE · LANGUE</Text>
             <ArabicText size="display" weight="semibold" color={colors.textPrimary}>
               اختر لغتك
             </ArabicText>
@@ -68,49 +72,53 @@ export default function LanguageScreen() {
               return (
                 <TouchableOpacity
                   key={lang.id}
-                  style={[
-                    styles.card,
-                    isSelected && styles.cardSelected,
-                    lang.disabled && styles.cardDisabled,
-                  ]}
                   onPress={() => !lang.disabled && setSelected(lang.id)}
                   activeOpacity={lang.disabled ? 1 : 0.8}
                 >
-                  <Text style={styles.flag}>{lang.flag}</Text>
-                  <View style={styles.cardText}>
-                    <ArabicText
-                      weight="medium"
-                      color={
-                        lang.disabled
-                          ? colors.textMuted
-                          : isSelected
-                            ? colors.justiceGold
-                            : colors.textPrimary
-                      }
-                    >
-                      {lang.label}
-                    </ArabicText>
-                    <ArabicText
-                      size="caption"
-                      color={lang.disabled ? colors.ink300 : colors.textMuted}
-                    >
-                      {lang.disabled ? "قريباً / Bientôt" : lang.sublabel}
-                    </ArabicText>
-                  </View>
-                  {isSelected && (
-                    <Ionicons
-                      name="checkmark-circle"
-                      size={24}
-                      color={colors.justiceGold}
-                    />
-                  )}
-                  {lang.disabled && (
-                    <Ionicons
-                      name="lock-closed-outline"
-                      size={18}
-                      color={colors.textMuted}
-                    />
-                  )}
+                  <ContentCard
+                    variant={isSelected ? "raised" : "default"}
+                    style={[
+                      styles.card,
+                      isSelected && styles.cardSelected,
+                      lang.disabled && styles.cardDisabled,
+                    ]}
+                  >
+                    <Text style={styles.flag}>{lang.flag}</Text>
+                    <View style={styles.cardText}>
+                      <ArabicText
+                        weight="medium"
+                        color={
+                          lang.disabled
+                            ? colors.textMuted
+                            : isSelected
+                              ? colors.gold
+                              : colors.textPrimary
+                        }
+                      >
+                        {lang.label}
+                      </ArabicText>
+                      <ArabicText
+                        size="caption"
+                        color={lang.disabled ? colors.ink300 : colors.textMuted}
+                      >
+                        {lang.disabled ? "قريباً / Bientôt" : lang.sublabel}
+                      </ArabicText>
+                    </View>
+                    {isSelected && (
+                      <Ionicons
+                        name="checkmark-circle"
+                        size={24}
+                        color={colors.gold}
+                      />
+                    )}
+                    {lang.disabled && (
+                      <Ionicons
+                        name="lock-closed-outline"
+                        size={18}
+                        color={colors.textMuted}
+                      />
+                    )}
+                  </ContentCard>
                 </TouchableOpacity>
               );
             })}
@@ -133,7 +141,7 @@ export default function LanguageScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.parchment },
+  container: { flex: 1, backgroundColor: "transparent" },
   safe: { flex: 1 },
   scroll: {
     padding: spacing.xl,
@@ -141,6 +149,7 @@ const styles = StyleSheet.create({
     flexGrow: 1,
   },
   header: { gap: spacing.xs, alignItems: "flex-end" },
+  eyebrow: { textAlign: "right" },
   headerFr: {
     fontFamily: typography.fontLatin,
     fontSize: 16,
@@ -151,17 +160,14 @@ const styles = StyleSheet.create({
   card: {
     flexDirection: "row-reverse",
     alignItems: "center",
-    backgroundColor: colors.surface1,
     borderRadius: radius.lg,
     padding: spacing.md,
     gap: spacing.md,
     borderWidth: 1.5,
-    borderColor: colors.ink200,
-    ...shadow.sm,
   },
   cardSelected: {
-    borderColor: colors.justiceGold,
-    backgroundColor: `${colors.justiceGold}08`,
+    borderColor: colors.gold,
+    backgroundColor: `${colors.gold}14`,
   },
   cardDisabled: { opacity: 0.5 },
   flag: { fontSize: 28, textAlign: "center", width: 40 },

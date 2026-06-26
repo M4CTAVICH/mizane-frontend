@@ -55,13 +55,13 @@ const styles = StyleSheet.create({
   label: { textAlign: "right" },
   input: {
     height: 48,
-    backgroundColor: colors.surface1,
+    backgroundColor: colors.surface2, // inset active field (#141417)
     borderRadius: radius.md,
     borderWidth: 1,
-    borderColor: colors.ink200,
+    borderColor: colors.ink200, // hairline white/10
     paddingHorizontal: spacing.md,
     fontSize: 15,
-    color: colors.textPrimary,
+    color: colors.textPrimary, // white vibrancy
     fontFamily: typography.fontLatin,
   },
   arabicInput: {

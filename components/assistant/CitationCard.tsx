@@ -1,8 +1,9 @@
 import React from "react";
 import { View, TouchableOpacity, StyleSheet } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { colors, radius, spacing, typography } from "../../constants/tokens";
+import { colors, spacing, typography } from "../../constants/tokens";
 import ArabicText from "../shared/ArabicText";
+import ContentCard from "../ui/ContentCard";
 import type { Citation } from "../../store/assistantStore";
 
 interface CitationCardProps {
@@ -12,38 +13,35 @@ interface CitationCardProps {
 
 export default function CitationCard({ citation, onPress }: CitationCardProps) {
   return (
-    <TouchableOpacity
-      style={styles.container}
-      onPress={onPress}
-      activeOpacity={0.8}
-    >
-      <View style={styles.header}>
-        <Ionicons name="library-outline" size={14} color={colors.justiceGold} />
-        <ArabicText
-          size="caption"
-          weight="medium"
-          color={colors.justiceGold}
-          style={styles.ref}
-        >
-          {citation.article} · {citation.law}
+    <TouchableOpacity onPress={onPress} activeOpacity={0.8} style={styles.wrap}>
+      <ContentCard padding={spacing.sm} style={styles.container}>
+        <View style={styles.header}>
+          <Ionicons name="library-outline" size={14} color={colors.gold} />
+          <ArabicText
+            size="caption"
+            weight="medium"
+            color={colors.gold}
+            style={styles.ref}
+          >
+            {citation.article} · {citation.law}
+          </ArabicText>
+          <Ionicons name="arrow-forward" size={12} color={colors.textMuted} />
+        </View>
+        <ArabicText size="caption" color={colors.textSecondary} style={styles.text}>
+          "{citation.text}"
         </ArabicText>
-        <Ionicons name="arrow-forward" size={12} color={colors.textMuted} />
-      </View>
-      <ArabicText size="caption" color={colors.ink300} style={styles.text}>
-        "{citation.text}"
-      </ArabicText>
+      </ContentCard>
     </TouchableOpacity>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    backgroundColor: colors.surface2,
-    borderRadius: radius.sm,
-    padding: spacing.sm,
+  wrap: {
     marginTop: spacing.xs,
+  },
+  container: {
     borderRightWidth: 3,
-    borderRightColor: colors.justiceGold,
+    borderRightColor: colors.gold, // gold article-ref accent edge
     gap: spacing.xs,
   },
   header: {

@@ -1,13 +1,14 @@
 import React, { useEffect, useRef } from "react";
 import {
   View,
+  Text,
   Animated,
   StyleSheet,
   SafeAreaView,
   StatusBar,
 } from "react-native";
 import { useRouter } from "expo-router";
-import { colors, spacing, typography } from "../../constants/tokens";
+import { colors, spacing, typography, textScale } from "../../constants/tokens";
 import Button from "../../components/ui/Button";
 import ArabicText from "../../components/shared/ArabicText";
 import { Ionicons } from "@expo/vector-icons";
@@ -46,12 +47,13 @@ export default function WelcomeScreen() {
           {/* Logo area */}
           <View style={styles.logoArea}>
             <View style={styles.logoCircle}>
-              <Ionicons name="scale-outline" size={56} color={colors.justiceGold} />
+              <Ionicons name="scale-outline" size={56} color={colors.gold} />
             </View>
+            <Text style={textScale.label}>MIZANE · LEGAL AI</Text>
             <ArabicText
               size="display"
               weight="semibold"
-              color={colors.justiceGold}
+              color={colors.gold}
               style={styles.title}
             >
               ميزان
@@ -63,14 +65,14 @@ export default function WelcomeScreen() {
             <ArabicText
               size="heading"
               weight="medium"
-              color={colors.ink300}
+              color={colors.textSecondary}
               style={styles.taglineAr}
             >
               مساعدك القانوني في جيبك
             </ArabicText>
             <ArabicText
               size="body"
-              color={colors.ink400}
+              color={colors.textMuted}
               style={styles.taglineFr}
             >
               Votre assistant juridique
@@ -81,7 +83,7 @@ export default function WelcomeScreen() {
           <View style={styles.features}>
             {["اعرف حقوقك", "نظّم وثائقك", "اتخذ إجراءً"].map((f) => (
               <View key={f} style={styles.featurePill}>
-                <ArabicText size="caption" color={colors.goldLight}>
+                <ArabicText size="caption" color={colors.gold}>
                   {f}
                 </ArabicText>
               </View>
@@ -106,7 +108,7 @@ export default function WelcomeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.inkBlue,
+    backgroundColor: "transparent",
   },
   safe: {
     flex: 1,
@@ -127,11 +129,11 @@ const styles = StyleSheet.create({
     width: 100,
     height: 100,
     borderRadius: 50,
-    borderWidth: 2,
-    borderColor: `${colors.justiceGold}40`,
+    borderWidth: 1,
+    borderColor: colors.glassBorder,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: `${colors.justiceGold}10`,
+    backgroundColor: colors.glassFill,
   },
   title: {
     fontSize: 48,
@@ -153,7 +155,8 @@ const styles = StyleSheet.create({
   },
   featurePill: {
     borderWidth: 1,
-    borderColor: `${colors.justiceGold}40`,
+    borderColor: colors.glassBorder,
+    backgroundColor: colors.glassFill,
     borderRadius: 999,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.xs,

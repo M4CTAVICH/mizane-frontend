@@ -22,7 +22,7 @@ export default function ProofBadge({ timestamp, onPress, isPending }: ProofBadge
       <Ionicons
         name="shield-checkmark-outline"
         size={14}
-        color={isPending ? colors.textMuted : colors.justiceGold}
+        color={isPending ? colors.textMuted : colors.gold}
       />
       <ArabicText
         size="caption"

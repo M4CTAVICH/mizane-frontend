@@ -1,9 +1,11 @@
 import "../global.css";
 import "../lib/i18n";
 import React, { useEffect } from "react";
+import { View } from "react-native";
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { useFonts } from "expo-font";
+import FluidMesh from "../components/ui/FluidMesh";
 import * as SplashScreen from "expo-splash-screen";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
@@ -48,18 +50,26 @@ export default function RootLayout() {
   return (
     <QueryClientProvider client={queryClient}>
       <StatusBar style="light" />
-      <Stack>
-        <Stack.Screen name="index" options={{ headerShown: false }} />
-        <Stack.Screen name="(auth)" options={{ headerShown: false }} />
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen
-          name="scan/index"
-          options={{ headerShown: false, presentation: "modal" }}
-        />
-        <Stack.Screen name="letter/[template]" options={{ headerShown: false }} />
-        <Stack.Screen name="procedure/[id]" options={{ headerShown: false }} />
-        <Stack.Screen name="vault/[id]" options={{ headerShown: false }} />
-      </Stack>
+      {/* Obsidian root canvas — pitch black with the underlying fluid mesh
+          so every Liquid Glass surface above has colored light to refract. */}
+      <View style={{ flex: 1, backgroundColor: "#000000" }}>
+        <FluidMesh />
+        <Stack
+          screenOptions={{
+            headerShown: false,
+            // Transparent so the root mesh shows through reskinned screens.
+            contentStyle: { backgroundColor: "transparent" },
+          }}
+        >
+          <Stack.Screen name="index" />
+          <Stack.Screen name="(auth)" />
+          <Stack.Screen name="(tabs)" />
+          <Stack.Screen name="scan/index" options={{ presentation: "modal" }} />
+          <Stack.Screen name="letter/[template]" />
+          <Stack.Screen name="procedure/[id]" />
+          <Stack.Screen name="vault/[id]" />
+        </Stack>
+      </View>
     </QueryClientProvider>
   );
 }

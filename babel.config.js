@@ -14,7 +14,8 @@ module.exports = function (api) {
           importSource: "react-native-css-interop",
         },
       ],
-      "react-native-reanimated/plugin",
+      // reanimated 4 moved its babel plugin into react-native-worklets
+      "react-native-worklets/plugin",
     ],
   };
 };

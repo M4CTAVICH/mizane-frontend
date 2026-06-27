@@ -9,6 +9,7 @@ import {
   TextInput,
   ImageBackground,
   ActivityIndicator,
+  ScrollView,
   Alert,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
@@ -22,17 +23,10 @@ import { toApiDocType, toStoreDocument } from "../../lib/mappers";
 import { VAULT_HERO_IMAGE } from "../../constants/assets";
 import ArabicText from "../../components/shared/ArabicText";
 import { LiquidGlassContainer } from "../../components/ui/LiquidGlassContainer";
-import BottomSheet from "../../components/ui/BottomSheet";
 import DocumentCard from "../../components/vault/DocumentCard";
 
 type PickedFile = { uri: string; name: string; mimeType: string };
 const DOC_TYPE_KEYS = Object.keys(DOC_TOKENS) as DocumentTypeKey[];
-
-// Western digits → Arabic-Indic, so metrics read natively in the RTL layout.
-function toArabicDigits(value: number | string): string {
-  const map = ["٠", "١", "٢", "٣", "٤", "٥", "٦", "٧", "٨", "٩"];
-  return String(value).replace(/[0-9]/g, (d) => map[Number(d)]);
-}
 
 interface SummaryTagProps {
   count: number;
@@ -44,7 +38,7 @@ function SummaryTag({ count, label, color }: SummaryTagProps) {
   return (
     <View style={[styles.tag, { backgroundColor: `${color}1F` }]}>
       <ArabicText size="caption" weight="semibold" color={color} style={styles.tagText}>
-        {`${toArabicDigits(count)} ${label}`}
+        {`${count} ${label}`}
       </ArabicText>
     </View>
   );
@@ -97,11 +91,18 @@ export default function VaultScreen() {
     setUploading(true);
     try {
       const formData = new FormData();
-      formData.append("file", {
-        uri: picked.uri,
-        name: picked.name,
-        type: picked.mimeType,
-      } as any);
+      if (Platform.OS === "web") {
+        // On web, FormData needs a real Blob/File; the {uri,name,type} object
+        // would be stringified to "[object Object]" and rejected by the API.
+        const blob = await (await fetch(picked.uri)).blob();
+        formData.append("file", blob, picked.name);
+      } else {
+        formData.append("file", {
+          uri: picked.uri,
+          name: picked.name,
+          type: picked.mimeType,
+        } as any);
+      }
       formData.append("type", toApiDocType(typeKey));
       await documentsApi.upload(formData);
       setTypeSheet(false);
@@ -148,7 +149,7 @@ export default function VaultScreen() {
             <ArabicText size="caption" color={colors.textMuted} style={styles.heroLabel}>
               إجمالي الوثائق المحفوظة
             </ArabicText>
-            <Text style={styles.heroMetric}>{toArabicDigits(documents.length)}</Text>
+            <Text style={styles.heroMetric}>{documents.length}</Text>
             <View style={styles.heroTags}>
               <SummaryTag count={valid} label="صالح" color={colors.safe} />
               <SummaryTag count={expiring} label="ينتهي" color={colors.caution} />
@@ -257,45 +258,72 @@ export default function VaultScreen() {
         }
       />
 
-      {/* Document-type picker shown after a file is selected */}
-      <BottomSheet
-        visible={typeSheet}
-        onClose={() => {
-          if (!uploading) {
-            setTypeSheet(false);
-            setPicked(null);
-          }
-        }}
-        title="نوع الوثيقة"
-        maxHeight={560}
-      >
-        {uploading ? (
-          <View style={styles.uploadingBox}>
-            <ActivityIndicator color={colors.gold} />
-            <ArabicText color={colors.textMuted}>جارٍ رفع الوثيقة...</ArabicText>
-          </View>
-        ) : (
-          <View style={styles.typeList}>
-            {DOC_TYPE_KEYS.map((key) => (
-              <TouchableOpacity
-                key={key}
-                style={styles.typeRow}
-                activeOpacity={0.8}
-                onPress={() => handleUpload(key)}
+      {/* Document-type picker — an in-screen overlay (not a Modal) so it can't
+          flicker when it mounts right after the native document picker closes. */}
+      {typeSheet && (
+        <View style={styles.pickerOverlay}>
+          <TouchableOpacity
+            style={styles.pickerBackdrop}
+            activeOpacity={1}
+            onPress={() => {
+              if (!uploading) {
+                setTypeSheet(false);
+                setPicked(null);
+              }
+            }}
+          />
+          <View style={styles.pickerCard}>
+            <View style={styles.pickerHandle} />
+            <View style={styles.pickerHeader}>
+              <ArabicText size="heading" weight="semibold" color={colors.textPrimary}>
+                نوع الوثيقة
+              </ArabicText>
+              {!uploading && (
+                <TouchableOpacity
+                  onPress={() => {
+                    setTypeSheet(false);
+                    setPicked(null);
+                  }}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                >
+                  <Ionicons name="close" size={24} color={colors.textMuted} />
+                </TouchableOpacity>
+              )}
+            </View>
+
+            {uploading ? (
+              <View style={styles.uploadingBox}>
+                <ActivityIndicator color={colors.gold} />
+                <ArabicText color={colors.textMuted}>جارٍ رفع الوثيقة...</ArabicText>
+              </View>
+            ) : (
+              <ScrollView
+                style={styles.typeScroll}
+                showsVerticalScrollIndicator={false}
+                bounces={false}
               >
-                <Ionicons
-                  name={DOC_TOKENS[key].icon as any}
-                  size={20}
-                  color={colors.gold}
-                />
-                <ArabicText weight="medium" color={colors.textPrimary} style={styles.typeLabel}>
-                  {DOC_TOKENS[key].label}
-                </ArabicText>
-              </TouchableOpacity>
-            ))}
+                {DOC_TYPE_KEYS.map((key) => (
+                  <TouchableOpacity
+                    key={key}
+                    style={styles.typeRow}
+                    activeOpacity={0.7}
+                    onPress={() => handleUpload(key)}
+                  >
+                    <Ionicons
+                      name={DOC_TOKENS[key].icon as any}
+                      size={20}
+                      color={colors.gold}
+                    />
+                    <ArabicText weight="medium" color={colors.textPrimary} style={styles.typeLabel}>
+                      {DOC_TOKENS[key].label}
+                    </ArabicText>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            )}
           </View>
-        )}
-      </BottomSheet>
+        </View>
+      )}
     </View>
   );
 }
@@ -401,12 +429,50 @@ const styles = StyleSheet.create({
     paddingTop: spacing.xxl,
     gap: spacing.md,
   },
+  // Inline type-picker overlay
+  pickerOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: "flex-end",
+    zIndex: 100,
+    elevation: 100,
+  },
+  pickerBackdrop: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(0,0,0,0.65)",
+  },
+  pickerCard: {
+    backgroundColor: colors.surface1,
+    borderTopLeftRadius: radius.xl,
+    borderTopRightRadius: radius.xl,
+    borderTopWidth: 1,
+    borderColor: colors.glassBorder,
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.sm,
+    paddingBottom: Platform.OS === "ios" ? 34 : 24,
+    maxHeight: "75%",
+  },
+  pickerHandle: {
+    width: 40,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: colors.ink300,
+    alignSelf: "center",
+    marginBottom: spacing.md,
+  },
+  pickerHeader: {
+    flexDirection: "row-reverse",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingBottom: spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.ink200,
+  },
   uploadingBox: {
     alignItems: "center",
     gap: spacing.md,
     paddingVertical: spacing.xl,
   },
-  typeList: { gap: spacing.xs, paddingBottom: spacing.md },
+  typeScroll: { marginTop: spacing.xs },
   typeRow: {
     flexDirection: "row-reverse",
     alignItems: "center",

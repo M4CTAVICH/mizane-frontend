@@ -348,6 +348,11 @@ const styles = StyleSheet.create({
     color: colors.textPrimary,
     width: "100%",
     height: "100%",
+    padding: 0,
+    textAlign: "center",
+    textAlignVertical: "center",
+    writingDirection: "ltr",
+    includeFontPadding: false,
   },
   otpTextFilled: { color: colors.gold },
 

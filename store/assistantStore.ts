@@ -21,6 +21,7 @@ interface AssistantState {
   isTyping: boolean;
   addMessage: (msg: Message) => void;
   updateLastMessage: (updates: Partial<Message>) => void;
+  updateMessage: (id: string, updates: Partial<Message>) => void;
   setTyping: (typing: boolean) => void;
   setConversationId: (id: string) => void;
   clearMessages: () => void;
@@ -45,6 +46,13 @@ export const useAssistantStore = create<AssistantState>((set) => ({
       }
       return { messages };
     }),
+
+  updateMessage: (id, updates) =>
+    set((state) => ({
+      messages: state.messages.map((m) =>
+        m.id === id ? { ...m, ...updates } : m
+      ),
+    })),
 
   setTyping: (isTyping) => set({ isTyping }),
   setConversationId: (conversationId) => set({ conversationId }),

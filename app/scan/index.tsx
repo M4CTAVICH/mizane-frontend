@@ -80,11 +80,17 @@ export default function ScanScreen() {
       const name = uri.split("/").pop() ?? "scan.jpg";
       const ext = (name.split(".").pop() ?? "jpg").toLowerCase();
       const formData = new FormData();
-      formData.append("file", {
-        uri,
-        name,
-        type: `image/${ext === "jpg" ? "jpeg" : ext}`,
-      } as any);
+      if (Platform.OS === "web") {
+        // Web needs a real Blob; the {uri,name,type} object would be stringified.
+        const blob = await (await fetch(uri)).blob();
+        formData.append("file", blob, name);
+      } else {
+        formData.append("file", {
+          uri,
+          name,
+          type: `image/${ext === "jpg" ? "jpeg" : ext}`,
+        } as any);
+      }
 
       const apiResult = await scanApi.scanFile(formData);
       setResult(mapScanResult(apiResult));

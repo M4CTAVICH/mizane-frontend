@@ -75,7 +75,13 @@ async function unwrap<T>(p: Promise<AxiosResponse<{ data: T } | T>>): Promise<T>
     : (res.data as T));
 }
 
+// AI generation (assistant, scan, letters) can take well over the default 30s —
+// embed + retrieval + a multi-paragraph LLM response. Use a generous timeout so
+// the client doesn't abort a request the server is still completing.
+const AI_TIMEOUT = 120000;
 const MULTIPART = { headers: { "Content-Type": "multipart/form-data" }, timeout: 60000 };
+const AI_MULTIPART = { headers: { "Content-Type": "multipart/form-data" }, timeout: AI_TIMEOUT };
+const AI_CONFIG = { timeout: AI_TIMEOUT };
 
 // ── Token helpers ────────────────────────────────────────────────────────
 export const tokens = {
@@ -111,10 +117,21 @@ export const assistantApi = {
     contentType: "TEXT" | "VOICE" = "TEXT",
   ) =>
     unwrap<AssistantReply>(
-      http.post(`/assistant/conversations/${conversationId}/messages`, {
-        content,
-        contentType,
-      }),
+      http.post(
+        `/assistant/conversations/${conversationId}/messages`,
+        { content, contentType },
+        AI_CONFIG,
+      ),
+    ),
+  // Voice turn: audio is transcribed server-side (qwen3-asr-flash) then treated
+  // as the message text. Send inline base64 (no upload step).
+  sendVoice: (conversationId: string, audioBase64: string) =>
+    unwrap<AssistantReply>(
+      http.post(
+        `/assistant/conversations/${conversationId}/messages`,
+        { contentType: "VOICE", audioBase64 },
+        AI_CONFIG,
+      ),
     ),
   transcript: (conversationId: string) =>
     unwrap<Transcript>(http.get(`/assistant/conversations/${conversationId}`)),
@@ -134,9 +151,9 @@ export const documentsApi = {
 export const scanApi = {
   // Provide a multipart `file` OR scan an existing vault `documentId`.
   scanFile: (formData: FormData) =>
-    unwrap<ScanResult>(http.post("/scan", formData, MULTIPART)),
+    unwrap<ScanResult>(http.post("/scan", formData, AI_MULTIPART)),
   scanDocument: (documentId: string) =>
-    unwrap<ScanResult>(http.post("/scan", { documentId })),
+    unwrap<ScanResult>(http.post("/scan", { documentId }, AI_CONFIG)),
 };
 
 // ── Letters ──────────────────────────────────────────────────────────────
@@ -147,7 +164,7 @@ export const lettersApi = {
     situation: string;
     recipientName?: string;
     recipientAddress?: string;
-  }) => unwrap<GeneratedLetter>(http.post("/letters", body)),
+  }) => unwrap<GeneratedLetter>(http.post("/letters", body, AI_CONFIG)),
   pdf: (id: string) => unwrap<LetterPdf>(http.post(`/letters/${id}/pdf`)),
 };
 

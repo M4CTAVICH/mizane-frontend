@@ -8,9 +8,12 @@ import {
   StyleSheet,
   KeyboardAvoidingView,
   Platform,
+  Alert,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
+import { Audio } from "expo-av";
+import * as FileSystem from "expo-file-system";
 import { colors, spacing, radius, typography } from "../../constants/tokens";
 import { useAssistantStore } from "../../store/assistantStore";
 import { useAuthStore } from "../../store/authStore";
@@ -26,13 +29,51 @@ function generateId() {
   return Math.random().toString(36).slice(2);
 }
 
+// Read a recording URI into raw base64. Native reads the file directly; web
+// fetches the blob: URI and strips the data-URL prefix.
+async function uriToBase64(uri: string): Promise<string> {
+  if (Platform.OS === "web") {
+    const blob = await (await fetch(uri)).blob();
+    return await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onloadend = () =>
+        resolve((reader.result as string).split(",")[1] ?? "");
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
+  }
+  return FileSystem.readAsStringAsync(uri, {
+    encoding: FileSystem.EncodingType.Base64,
+  });
+}
+
 export default function AssistantScreen() {
-  const { messages, addMessage, updateLastMessage, setTyping, isTyping, conversationId, setConversationId } =
-    useAssistantStore();
+  const {
+    messages,
+    addMessage,
+    updateLastMessage,
+    updateMessage,
+    setTyping,
+    isTyping,
+    conversationId,
+    setConversationId,
+  } = useAssistantStore();
   const user = useAuthStore((s) => s.user);
   const language = useAuthStore((s) => s.language);
   const [input, setInput] = useState("");
+  const [recording, setRecording] = useState(false);
+  const recordingRef = useRef<Audio.Recording | null>(null);
   const flatListRef = useRef<FlatList>(null);
+
+  const ensureConversation = useCallback(async () => {
+    let convId = conversationId;
+    if (!convId) {
+      const conv = await assistantApi.startConversation(toApiLanguage(language));
+      convId = conv.id;
+      setConversationId(convId);
+    }
+    return convId;
+  }, [conversationId, language, setConversationId]);
 
   const sendMessage = useCallback(
     async (text: string) => {
@@ -89,6 +130,104 @@ export default function AssistantScreen() {
     },
     [language, conversationId]
   );
+
+  // ── Voice: record → transcribe (server-side) → grounded reply ──────────
+  const sendVoiceMessage = useCallback(
+    async (uri: string) => {
+      const userMsgId = generateId();
+      addMessage({
+        id: userMsgId,
+        role: "user",
+        content: "🎙️ رسالة صوتية",
+        timestamp: new Date(),
+      });
+      const loadingId = generateId();
+      addMessage({
+        id: loadingId,
+        role: "assistant",
+        content: "",
+        timestamp: new Date(),
+        isLoading: true,
+      });
+      setTyping(true);
+      setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 100);
+
+      try {
+        const base64 = await uriToBase64(uri);
+        if (!base64) throw new Error("empty audio");
+        const convId = await ensureConversation();
+        const res = await assistantApi.sendVoice(convId, base64);
+        updateMessage(loadingId, {
+          content: res.message.content ?? "",
+          citations: toStoreCitations(res.message.citations),
+          isLoading: false,
+        });
+        // Replace the placeholder with the actual transcription (free DB read).
+        try {
+          const t = await assistantApi.transcript(convId);
+          const lastUser = [...t.messages]
+            .reverse()
+            .find((m) => m.role === "USER");
+          if (lastUser?.content) updateMessage(userMsgId, { content: lastUser.content });
+        } catch {
+          /* transcription display is best-effort */
+        }
+      } catch (e: any) {
+        const msg =
+          e?.response?.status === 401
+            ? "انتهت الجلسة. سجّل الدخول من جديد."
+            : e?.response?.data
+              ? "تعذّر فهم التسجيل. حاول مرة أخرى وتكلّم بوضوح."
+              : "عذرًا، تعذّر معالجة الرسالة الصوتية.";
+        updateMessage(loadingId, { content: msg, isLoading: false });
+      } finally {
+        setTyping(false);
+        setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 100);
+      }
+    },
+    [ensureConversation, addMessage, updateMessage, setTyping]
+  );
+
+  const startRecording = useCallback(async () => {
+    try {
+      const perm = await Audio.requestPermissionsAsync();
+      if (!perm.granted) {
+        Alert.alert("الميكروفون", "نحتاج إذن الميكروفون لتسجيل الرسائل الصوتية.");
+        return;
+      }
+      await Audio.setAudioModeAsync({
+        allowsRecordingIOS: true,
+        playsInSilentModeIOS: true,
+      });
+      const { recording: rec } = await Audio.Recording.createAsync(
+        Audio.RecordingOptionsPresets.HIGH_QUALITY
+      );
+      recordingRef.current = rec;
+      setRecording(true);
+    } catch {
+      Alert.alert("خطأ", "تعذّر بدء التسجيل.");
+    }
+  }, []);
+
+  const stopRecording = useCallback(async () => {
+    const rec = recordingRef.current;
+    recordingRef.current = null;
+    setRecording(false);
+    if (!rec) return;
+    try {
+      await rec.stopAndUnloadAsync();
+      await Audio.setAudioModeAsync({ allowsRecordingIOS: false });
+      const uri = rec.getURI();
+      if (uri) await sendVoiceMessage(uri);
+    } catch {
+      Alert.alert("خطأ", "تعذّر إنهاء التسجيل.");
+    }
+  }, [sendVoiceMessage]);
+
+  const toggleRecording = useCallback(() => {
+    if (recording) stopRecording();
+    else startRecording();
+  }, [recording, startRecording, stopRecording]);
 
   const renderItem = useCallback(
     ({ item }: { item: Message }) => <ChatBubble message={item} />,
@@ -147,15 +286,27 @@ export default function AssistantScreen() {
           <View style={styles.composer}>
             <View style={styles.composerHighlight} pointerEvents="none" />
             <View style={styles.inputRow}>
-              <TouchableOpacity style={styles.micBtn} activeOpacity={0.7}>
-                <Ionicons name="mic-outline" size={18} color={colors.textMuted} />
+              <TouchableOpacity
+                style={styles.micBtn}
+                activeOpacity={0.7}
+                onPress={toggleRecording}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              >
+                <Ionicons
+                  name={recording ? "stop-circle" : "mic-outline"}
+                  size={recording ? 22 : 18}
+                  color={recording ? colors.danger : colors.textMuted}
+                />
               </TouchableOpacity>
               <TextInput
                 style={styles.input}
                 value={input}
                 onChangeText={setInput}
-                placeholder="اكتب سؤالك..."
-                placeholderTextColor={colors.textMuted}
+                placeholder={
+                  recording ? "جارٍ التسجيل... اضغط ◼ للإرسال" : "اكتب سؤالك..."
+                }
+                placeholderTextColor={recording ? colors.danger : colors.textMuted}
+                editable={!recording}
                 multiline
                 returnKeyType="send"
                 onSubmitEditing={() => sendMessage(input)}
@@ -246,15 +397,19 @@ const styles = StyleSheet.create({
   },
   input: {
     flex: 1,
-    minHeight: 36,
-    maxHeight: 120,
+    // Hug a single line so the row can vertically center it against the 36px
+    // mic/send buttons; grows up to maxHeight for longer questions.
+    minHeight: 24,
+    maxHeight: 100,
     paddingHorizontal: 0,
     paddingVertical: 0,
     fontSize: 15,
+    lineHeight: 20,
     fontFamily: typography.fontArabic,
     color: colors.textPrimary,
     textAlign: "right",
     textAlignVertical: "center",
+    includeFontPadding: false,
   },
   sendBtn: {
     width: 36,

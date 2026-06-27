@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   View,
   TouchableOpacity,
@@ -21,7 +21,17 @@ import ArabicText from "../../components/shared/ArabicText";
 import Button from "../../components/ui/Button";
 import ContentCard from "../../components/ui/ContentCard";
 import { LiquidGlassContainer } from "../../components/ui/LiquidGlassContainer";
-import type { ProcedureDto, ProcedureKey } from "../../types/api";
+import type {
+  DeadlineResult,
+  ProcedureDto,
+  ProcedureInstance,
+  ProcedureKey,
+} from "../../types/api";
+
+function toArabicDigits(value: string): string {
+  const map = ["٠", "١", "٢", "٣", "٤", "٥", "٦", "٧", "٨", "٩"];
+  return value.replace(/[0-9]/g, (d) => map[Number(d)]);
+}
 
 export default function ProcedureDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -31,19 +41,27 @@ export default function ProcedureDetailScreen() {
   const key = id as ProcedureKey;
   const meta = PROCEDURE_META[key];
   const [procedure, setProcedure] = useState<ProcedureDto | null>(null);
+  const [instance, setInstance] = useState<ProcedureInstance | null>(null);
   const [loading, setLoading] = useState(true);
   const [currentStep, setCurrentStep] = useState(0);
   const [eventDate, setEventDate] = useState("");
-  const [deadline, setDeadline] = useState<string | null>(null);
+  const [deadline, setDeadline] = useState<DeadlineResult | null>(null);
   const [calcLoading, setCalcLoading] = useState(false);
   const [starting, setStarting] = useState(false);
 
   useEffect(() => {
     let active = true;
-    proceduresApi
-      .catalog()
-      .then((rows) => {
-        if (active) setProcedure(rows.find((p) => p.key === key) ?? null);
+    // Catalog gives the playbook; instances/me tells us if this user already
+    // started it and carries server-computed readiness (brief §4). The fixed
+    // `instances/me` path must be requested as-is — never as a :key.
+    Promise.all([
+      proceduresApi.catalog(),
+      proceduresApi.myInstances().catch(() => [] as ProcedureInstance[]),
+    ])
+      .then(([rows, instances]) => {
+        if (!active) return;
+        setProcedure(rows.find((p) => p.key === key) ?? null);
+        setInstance(instances.find((i) => i.procedure?.key === key) ?? null);
       })
       .catch(() => {})
       .finally(() => active && setLoading(false));
@@ -55,6 +73,16 @@ export default function ProcedureDetailScreen() {
   const steps = procedure?.steps ?? [];
   const requiredDocs = (procedure?.requiredDocTypes ?? []).map(toAppDocType);
 
+  // Prefer the server's readiness once the procedure is started; before that,
+  // fall back to a local vault check against the catalog's requiredDocTypes.
+  const presentSet = useMemo(
+    () =>
+      instance
+        ? new Set(instance.readiness.present.map(toAppDocType))
+        : null,
+    [instance],
+  );
+
   const handleCalculateDeadline = async () => {
     if (!eventDate || !meta?.noticeType) return;
     setCalcLoading(true);
@@ -63,7 +91,7 @@ export default function ProcedureDetailScreen() {
         noticeType: meta.noticeType,
         noticeDate: eventDate,
       });
-      setDeadline(new Date(res.dueDate).toLocaleDateString("ar-DZ"));
+      setDeadline(res);
     } catch {
       Alert.alert("خطأ", "تعذّر حساب الموعد. تحقّق من التاريخ (YYYY-MM-DD).");
     } finally {
@@ -74,8 +102,16 @@ export default function ProcedureDetailScreen() {
   const handleStart = async () => {
     setStarting(true);
     try {
-      await proceduresApi.start(key);
-      Alert.alert("تم", "تم بدء الإجراء وتتبّعه في حسابك.");
+      // start is idempotent — returns the (existing or new) instance with
+      // readiness; keep it so the doc checklist reflects the server (brief §5).
+      const view = await proceduresApi.start(key);
+      setInstance(view);
+      Alert.alert(
+        "تم",
+        view.readiness.ready
+          ? "تم بدء الإجراء — جميع الوثائق جاهزة."
+          : "تم بدء الإجراء وتتبّعه في حسابك.",
+      );
     } catch (e: any) {
       Alert.alert(
         "خطأ",
@@ -88,7 +124,8 @@ export default function ProcedureDetailScreen() {
 
   const stepDocs = requiredDocs.map((docType) => {
     const found = documents.find((d) => d.type === docType);
-    return { type: docType, inVault: !!found, doc: found };
+    const inVault = presentSet ? presentSet.has(docType) : !!found;
+    return { type: docType, inVault, doc: found };
   });
 
   if (loading) {
@@ -180,6 +217,36 @@ export default function ProcedureDetailScreen() {
           </View>
         </ContentCard>
 
+        {/* Readiness banner — shown once the procedure is started (brief §4) */}
+        {instance && (
+          <View
+            style={[
+              styles.readinessBanner,
+              {
+                backgroundColor: instance.readiness.ready
+                  ? `${colors.safe}1A`
+                  : `${colors.caution}1A`,
+              },
+            ]}
+          >
+            <Ionicons
+              name={instance.readiness.ready ? "checkmark-circle" : "alert-circle"}
+              size={18}
+              color={instance.readiness.ready ? colors.safe : colors.caution}
+            />
+            <ArabicText
+              size="caption"
+              weight="medium"
+              color={instance.readiness.ready ? colors.safe : colors.caution}
+              style={{ flex: 1, textAlign: "right" }}
+            >
+              {instance.readiness.ready
+                ? "كل الوثائق المطلوبة جاهزة في خزينتك."
+                : `ينقصك ${toArabicDigits(String(instance.readiness.missing.length))} وثيقة لإكمال الملف.`}
+            </ArabicText>
+          </View>
+        )}
+
         {/* Current step content */}
         <ContentCard>
           <ArabicText size="heading" weight="semibold" color={colors.textPrimary}>
@@ -264,12 +331,29 @@ export default function ProcedureDetailScreen() {
               احسب الموعد النهائي
             </Button>
             {deadline && (
-              <View style={styles.deadlineResult}>
-                <Ionicons name="warning" size={16} color={colors.caution} />
-                <ArabicText weight="semibold" color={colors.caution}>
-                  الموعد النهائي: {deadline}
-                </ArabicText>
-              </View>
+              <>
+                <View style={styles.deadlineResult}>
+                  <Ionicons name="warning" size={16} color={colors.caution} />
+                  <ArabicText weight="semibold" color={colors.caution} style={{ flex: 1, textAlign: "right" }}>
+                    {deadline.label?.ar ?? "الموعد النهائي"}: {new Date(deadline.dueDate).toLocaleDateString("ar-DZ")}
+                    {" "}({toArabicDigits(String(deadline.days))} يوم)
+                  </ArabicText>
+                </View>
+                {/* brief §6: a sample result is a placeholder, NOT verified law. */}
+                {deadline.sample && (
+                  <View style={styles.disclaimer}>
+                    <Ionicons name="information-circle-outline" size={15} color={colors.textMuted} />
+                    <ArabicText size="caption" color={colors.textMuted} style={{ flex: 1, textAlign: "right", lineHeight: 18 }}>
+                      هذا تقدير تجريبي وليس نصًّا قانونيًا مؤكَّدًا — تحقّق من الأجل لدى جهة مختصة.
+                    </ArabicText>
+                  </View>
+                )}
+                {deadline.caveat && (
+                  <ArabicText size="caption" color={colors.textMuted} style={{ textAlign: "right", marginTop: spacing.xs, lineHeight: 18 }}>
+                    {deadline.caveat}
+                  </ArabicText>
+                )}
+              </>
             )}
           </ContentCard>
         )}
@@ -285,7 +369,11 @@ export default function ProcedureDetailScreen() {
             </Button>
           ) : (
             <Button variant="primary" onPress={handleStart} loading={starting}>
-              {starting ? "جارٍ البدء..." : "ابدأ تتبّع الإجراء ✓"}
+              {starting
+                ? "جارٍ البدء..."
+                : instance
+                  ? "تحديث حالة الإجراء ✓"
+                  : "ابدأ تتبّع الإجراء ✓"}
             </Button>
           )}
           {currentStep > 0 && (
@@ -404,6 +492,19 @@ const styles = StyleSheet.create({
     backgroundColor: colors.cautionLight,
     borderRadius: radius.md,
     padding: spacing.sm,
+  },
+  disclaimer: {
+    flexDirection: "row-reverse",
+    alignItems: "flex-start",
+    gap: spacing.xs,
+    marginTop: spacing.sm,
+  },
+  readinessBanner: {
+    flexDirection: "row-reverse",
+    alignItems: "center",
+    gap: spacing.sm,
+    borderRadius: radius.lg,
+    padding: spacing.md,
   },
   navButtons: { gap: spacing.sm },
 });

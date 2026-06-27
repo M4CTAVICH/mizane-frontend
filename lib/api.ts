@@ -83,6 +83,20 @@ const MULTIPART = { headers: { "Content-Type": "multipart/form-data" }, timeout:
 const AI_MULTIPART = { headers: { "Content-Type": "multipart/form-data" }, timeout: AI_TIMEOUT };
 const AI_CONFIG = { timeout: AI_TIMEOUT };
 
+// The assistant message route is throttled (ThrottleAiGuard) and returns 429
+// under burst. Retry a couple of times with exponential backoff before giving
+// up so a single rate-limit blip doesn't surface as a failed turn (PROMPT.md §4).
+async function withRetryOn429<T>(fn: () => Promise<T>, attempts = 3): Promise<T> {
+  for (let i = 0; ; i++) {
+    try {
+      return await fn();
+    } catch (e: any) {
+      if (e?.response?.status !== 429 || i >= attempts - 1) throw e;
+      await new Promise((r) => setTimeout(r, 800 * 2 ** i));
+    }
+  }
+}
+
 // ── Token helpers ────────────────────────────────────────────────────────
 export const tokens = {
   save: (token: string) => storage.setItem(TOKEN_KEY, token),
@@ -116,21 +130,25 @@ export const assistantApi = {
     content: string,
     contentType: "TEXT" | "VOICE" = "TEXT",
   ) =>
-    unwrap<AssistantReply>(
-      http.post(
-        `/assistant/conversations/${conversationId}/messages`,
-        { content, contentType },
-        AI_CONFIG,
+    withRetryOn429(() =>
+      unwrap<AssistantReply>(
+        http.post(
+          `/assistant/conversations/${conversationId}/messages`,
+          { content, contentType },
+          AI_CONFIG,
+        ),
       ),
     ),
   // Voice turn: audio is transcribed server-side (qwen3-asr-flash) then treated
   // as the message text. Send inline base64 (no upload step).
   sendVoice: (conversationId: string, audioBase64: string) =>
-    unwrap<AssistantReply>(
-      http.post(
-        `/assistant/conversations/${conversationId}/messages`,
-        { contentType: "VOICE", audioBase64 },
-        AI_CONFIG,
+    withRetryOn429(() =>
+      unwrap<AssistantReply>(
+        http.post(
+          `/assistant/conversations/${conversationId}/messages`,
+          { contentType: "VOICE", audioBase64 },
+          AI_CONFIG,
+        ),
       ),
     ),
   transcript: (conversationId: string) =>

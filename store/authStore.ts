@@ -1,7 +1,14 @@
 import { create } from "zustand";
 import { authApi, tokens, usersApi } from "../lib/api";
 import { toApiLanguage, toAppLanguage, type AppLang } from "../lib/mappers";
-import type { UserProfile } from "../types/api";
+import type { Language, UserProfile } from "../types/api";
+
+// The fields a user may edit on their own profile (PROMPT.md / profile brief §3).
+export interface ProfilePatch {
+  language?: Language;
+  nin?: string;
+  displayName?: string;
+}
 
 interface User {
   id: string;
@@ -29,6 +36,9 @@ interface AuthState {
   verifyOtp: (phone: string, code: string) => Promise<void>;
   refreshProfile: () => Promise<void>;
   syncLanguage: (lang: AppLang) => Promise<void>;
+  // PATCH /users/me with only the changed fields; replaces local state with the
+  // full updated profile (brief §3) and rethrows so callers can surface 400s.
+  updateProfile: (patch: ProfilePatch) => Promise<User>;
 }
 
 // Maps a backend profile to the local store shape (the UI uses lowercase langs).
@@ -96,6 +106,13 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     const profile = await usersApi.me();
     const user = toStoreUser(profile);
     set({ user, language: user.language });
+  },
+
+  updateProfile: async (patch) => {
+    const profile = await usersApi.update(patch);
+    const user = toStoreUser(profile);
+    set({ user, language: user.language });
+    return user;
   },
 
   // Persist the chosen language to the profile (best-effort; ignores failure

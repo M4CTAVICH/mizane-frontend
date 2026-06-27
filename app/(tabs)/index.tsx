@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback } from "react";
+import React, { useState, useRef, useCallback, useEffect } from "react";
 import {
   View,
   Text,
@@ -9,16 +9,26 @@ import {
   KeyboardAvoidingView,
   Platform,
   Alert,
+  Linking,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
 import { Audio } from "expo-av";
 import * as FileSystem from "expo-file-system";
 import { colors, spacing, radius, typography } from "../../constants/tokens";
-import { useAssistantStore } from "../../store/assistantStore";
+import {
+  useAssistantStore,
+  CONVERSATION_KEY,
+} from "../../store/assistantStore";
 import { useAuthStore } from "../../store/authStore";
-import { assistantApi } from "../../lib/api";
-import { toApiLanguage, toStoreCitations } from "../../lib/mappers";
+import { assistantApi, escalationApi } from "../../lib/api";
+import { storage } from "../../lib/storage";
+import {
+  toApiLanguage,
+  toStoreCitations,
+  toStoreMessage,
+} from "../../lib/mappers";
 import ArabicText from "../../components/shared/ArabicText";
 import { LiquidGlassContainer } from "../../components/ui/LiquidGlassContainer";
 import ChatBubble from "../../components/assistant/ChatBubble";
@@ -51,29 +61,77 @@ export default function AssistantScreen() {
   const {
     messages,
     addMessage,
+    setMessages,
     updateLastMessage,
     updateMessage,
     setTyping,
     isTyping,
     conversationId,
     setConversationId,
+    escalationOffered,
+    setEscalationOffered,
   } = useAssistantStore();
   const user = useAuthStore((s) => s.user);
   const language = useAuthStore((s) => s.language);
+  const router = useRouter();
   const [input, setInput] = useState("");
   const [recording, setRecording] = useState(false);
   const recordingRef = useRef<Audio.Recording | null>(null);
   const flatListRef = useRef<FlatList>(null);
+  // Holds an in-flight conversation-creation promise so concurrent callers
+  // (the on-open effect + a fast first message) share one POST, never two.
+  const convPromiseRef = useRef<Promise<string> | null>(null);
 
   const ensureConversation = useCallback(async () => {
-    let convId = conversationId;
-    if (!convId) {
+    if (conversationId) return conversationId;
+    if (convPromiseRef.current) return convPromiseRef.current;
+    const p = (async () => {
       const conv = await assistantApi.startConversation(toApiLanguage(language));
-      convId = conv.id;
-      setConversationId(convId);
+      setConversationId(conv.id);
+      return conv.id;
+    })();
+    convPromiseRef.current = p;
+    try {
+      return await p;
+    } finally {
+      convPromiseRef.current = null;
     }
-    return convId;
   }, [conversationId, language, setConversationId]);
+
+  // On mount: rehydrate the last conversation from its persisted id via the
+  // transcript endpoint (PROMPT.md §3.3) so history survives an app restart.
+  // If nothing is stored (or it's gone/404), open a fresh conversation so the
+  // id is ready before the first message.
+  useEffect(() => {
+    // Already active in this session (e.g. a tab remount) — keep state as-is.
+    if (conversationId) return;
+    let cancelled = false;
+    (async () => {
+      const stored = await storage.getItem(CONVERSATION_KEY);
+      if (stored && !cancelled) {
+        try {
+          const t = await assistantApi.transcript(stored);
+          if (cancelled) return;
+          setConversationId(stored);
+          setMessages(t.messages.map(toStoreMessage));
+          return;
+        } catch {
+          // 404/expired/not-owned → discard the stale id and start fresh.
+          await storage.removeItem(CONVERSATION_KEY);
+        }
+      }
+      if (!cancelled) {
+        ensureConversation().catch(() => {
+          /* will retry on first send */
+        });
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // Only on mount / when no conversation exists yet.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const sendMessage = useCallback(
     async (text: string) => {
@@ -104,19 +162,15 @@ export default function AssistantScreen() {
       setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 100);
 
       try {
-        // Lazily open a conversation, then send the turn.
-        let convId = conversationId;
-        if (!convId) {
-          const conv = await assistantApi.startConversation(toApiLanguage(language));
-          convId = conv.id;
-          setConversationId(convId);
-        }
+        // Conversation is opened on screen mount; reuse it (or create on demand).
+        const convId = await ensureConversation();
         const res = await assistantApi.sendMessage(convId, trimmed);
         updateLastMessage({
           content: res.message.content ?? "",
           citations: toStoreCitations(res.message.citations),
           isLoading: false,
         });
+        setEscalationOffered(res.escalationOffered);
       } catch (e: any) {
         const msg =
           e?.response?.status === 401
@@ -128,8 +182,28 @@ export default function AssistantScreen() {
         setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 100);
       }
     },
-    [language, conversationId]
+    [ensureConversation, addMessage, updateLastMessage, setTyping, setEscalationOffered]
   );
+
+  // ── Escalation CTA → open a real professional contact ──────────────────
+  const openEscalation = useCallback(async () => {
+    try {
+      const list = await escalationApi.list({ language: toApiLanguage(language) });
+      const entry = list.find((e) => e.phone) ?? list.find((e) => e.url) ?? list[0];
+      if (entry?.phone) {
+        await Linking.openURL(`tel:${entry.phone.replace(/\s+/g, "")}`);
+      } else if (entry?.url) {
+        await Linking.openURL(entry.url);
+      } else if (entry) {
+        // No dialable contact (sample/national entries) — surface the guidance.
+        Alert.alert(entry.name, entry.note ?? `${entry.type} — ${entry.region}`);
+      } else {
+        Alert.alert("المساعدة القانونية", "لا تتوفر جهة اتصال حاليًا. حاول لاحقًا.");
+      }
+    } catch {
+      Alert.alert("خطأ", "تعذّر جلب جهات المساعدة القانونية.");
+    }
+  }, [language]);
 
   // ── Voice: record → transcribe (server-side) → grounded reply ──────────
   const sendVoiceMessage = useCallback(
@@ -162,6 +236,7 @@ export default function AssistantScreen() {
           citations: toStoreCitations(res.message.citations),
           isLoading: false,
         });
+        setEscalationOffered(res.escalationOffered);
         // Replace the placeholder with the actual transcription (free DB read).
         try {
           const t = await assistantApi.transcript(convId);
@@ -185,7 +260,7 @@ export default function AssistantScreen() {
         setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 100);
       }
     },
-    [ensureConversation, addMessage, updateMessage, setTyping]
+    [ensureConversation, addMessage, updateMessage, setTyping, setEscalationOffered]
   );
 
   const startRecording = useCallback(async () => {
@@ -247,8 +322,11 @@ export default function AssistantScreen() {
         <View style={styles.headerWrap}>
           <LiquidGlassContainer radius={radius.lg} padding={spacing.md}>
             <View style={styles.headerRow}>
-              <TouchableOpacity hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-                <Ionicons name="notifications-outline" size={22} color={colors.textMuted} />
+              <TouchableOpacity
+                onPress={() => router.push("/profile" as never)}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              >
+                <Ionicons name="person-circle-outline" size={24} color={colors.textMuted} />
               </TouchableOpacity>
               <ArabicText
                 size="heading"
@@ -280,6 +358,25 @@ export default function AssistantScreen() {
             flatListRef.current?.scrollToEnd({ animated: false })
           }
         />
+
+        {/* ── Escalation CTA — shown when the reply offers a professional ── */}
+        {escalationOffered && !isTyping && (
+          <TouchableOpacity
+            style={styles.escalationCta}
+            activeOpacity={0.85}
+            onPress={openEscalation}
+          >
+            <Ionicons name="people-outline" size={18} color={colors.inkBlue} />
+            <ArabicText
+              size="body"
+              weight="semibold"
+              color={colors.inkBlue}
+              style={styles.escalationText}
+            >
+              تحدّث إلى مختص قانوني
+            </ArabicText>
+          </TouchableOpacity>
+        )}
 
         {/* ── Glass composer pill (floats above the glass tab bar) ───── */}
         <View style={styles.composerWrap}>
@@ -358,6 +455,23 @@ const styles = StyleSheet.create({
     gap: spacing.xs,
   },
   chatEmpty: { flexGrow: 1 },
+
+  // Escalation CTA — sits just above the composer pill.
+  escalationCta: {
+    position: "absolute",
+    left: 16,
+    right: 16,
+    bottom: Platform.OS === "ios" ? 200 : 184,
+    flexDirection: "row-reverse",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    backgroundColor: colors.gold,
+    borderRadius: 22,
+    paddingVertical: 11,
+    paddingHorizontal: 16,
+  },
+  escalationText: { fontSize: 15 },
 
   // Composer
   composerWrap: {

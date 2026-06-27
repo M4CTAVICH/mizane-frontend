@@ -7,13 +7,17 @@
 // ─────────────────────────────────────────────────────────────────────────
 import { DocumentType as DOC_TOKENS, type DocumentTypeKey } from "@/constants/tokens";
 import type {
+  AssistantMessage,
   Citation as ApiCitation,
   DocumentStatus,
   DocumentType,
   Language,
   VaultDocumentDto,
 } from "@/types/api";
-import type { Citation as StoreCitation } from "@/store/assistantStore";
+import type {
+  Citation as StoreCitation,
+  Message as StoreMessage,
+} from "@/store/assistantStore";
 import type { VaultDocument } from "@/store/vaultStore";
 
 // ── Language ─────────────────────────────────────────────────────────────
@@ -114,4 +118,18 @@ export function toStoreCitations(citations: ApiCitation[] = []): StoreCitation[]
     law: c.source ?? "",
     text: "",
   }));
+}
+
+// ── Transcript message → store message ───────────────────────────────────
+// Used to rehydrate a chat from GET /assistant/conversations/:id (PROMPT.md
+// §3.3). Backend roles are USER | ASSISTANT | SYSTEM; the UI only renders two
+// sides, so anything that isn't a USER turn lands on the assistant side.
+export function toStoreMessage(m: AssistantMessage): StoreMessage {
+  return {
+    id: m.id,
+    role: m.role === "USER" ? "user" : "assistant",
+    content: m.content ?? "",
+    citations: toStoreCitations(m.citations),
+    timestamp: new Date(m.createdAt),
+  };
 }

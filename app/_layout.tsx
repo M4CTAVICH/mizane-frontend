@@ -90,6 +90,7 @@ export default function RootLayout() {
             <Stack.Screen name="scan/index" options={{ presentation: "modal" }} />
             <Stack.Screen name="letter/[template]" />
             <Stack.Screen name="procedure/[id]" />
+            <Stack.Screen name="profile" />
             <Stack.Screen name="vault/[id]" />
           </Stack>
         </View>

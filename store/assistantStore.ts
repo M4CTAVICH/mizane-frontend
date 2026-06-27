@@ -1,4 +1,9 @@
 import { create } from "zustand";
+import { storage } from "../lib/storage";
+
+// Persist the active conversation id so a chat survives an app restart; the
+// transcript endpoint (PROMPT.md §3.3) rehydrates the messages from it.
+export const CONVERSATION_KEY = "assistant_conversation_id";
 
 export interface Citation {
   article: string;
@@ -19,11 +24,14 @@ interface AssistantState {
   messages: Message[];
   conversationId: string | null;
   isTyping: boolean;
+  escalationOffered: boolean;
   addMessage: (msg: Message) => void;
+  setMessages: (msgs: Message[]) => void;
   updateLastMessage: (updates: Partial<Message>) => void;
   updateMessage: (id: string, updates: Partial<Message>) => void;
   setTyping: (typing: boolean) => void;
   setConversationId: (id: string) => void;
+  setEscalationOffered: (offered: boolean) => void;
   clearMessages: () => void;
 }
 
@@ -31,9 +39,12 @@ export const useAssistantStore = create<AssistantState>((set) => ({
   messages: [],
   conversationId: null,
   isTyping: false,
+  escalationOffered: false,
 
   addMessage: (msg) =>
     set((state) => ({ messages: [...state.messages, msg] })),
+
+  setMessages: (messages) => set({ messages }),
 
   updateLastMessage: (updates) =>
     set((state) => {
@@ -55,6 +66,14 @@ export const useAssistantStore = create<AssistantState>((set) => ({
     })),
 
   setTyping: (isTyping) => set({ isTyping }),
-  setConversationId: (conversationId) => set({ conversationId }),
-  clearMessages: () => set({ messages: [], conversationId: null }),
+  setConversationId: (conversationId) => {
+    set({ conversationId });
+    // Fire-and-forget: keep the persisted copy in sync with the live id.
+    void storage.setItem(CONVERSATION_KEY, conversationId);
+  },
+  setEscalationOffered: (escalationOffered) => set({ escalationOffered }),
+  clearMessages: () => {
+    set({ messages: [], conversationId: null, escalationOffered: false });
+    void storage.removeItem(CONVERSATION_KEY);
+  },
 }));

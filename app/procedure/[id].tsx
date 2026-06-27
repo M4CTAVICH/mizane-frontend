@@ -9,16 +9,20 @@ import {
   TextInput,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { useTranslation } from "react-i18next";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { colors, radius, spacing, typography } from "../../constants/tokens";
-import { PROCEDURES, DocumentType } from "../../constants/tokens";
+import { PROCEDURES } from "../../constants/tokens";
 import { useVaultStore } from "../../store/vaultStore";
 import ArabicText from "../../components/shared/ArabicText";
 import Button from "../../components/ui/Button";
 import ContentCard from "../../components/ui/ContentCard";
 import { LiquidGlassContainer } from "../../components/ui/LiquidGlassContainer";
+import { useDirection } from "../../lib/direction";
 
 export default function ProcedureDetailScreen() {
+  const { t } = useTranslation();
+  const dir = useDirection();
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const documents = useVaultStore((s) => s.documents);
@@ -46,7 +50,7 @@ export default function ProcedureDetailScreen() {
       {/* ── Floating glass header pill (functional layer) ─────────── */}
       <View style={styles.headerWrap}>
         <LiquidGlassContainer radius={radius.lg} padding={spacing.md}>
-          <View style={styles.headerRow}>
+          <View style={[styles.headerRow, { flexDirection: dir.row }]}>
             <TouchableOpacity
               style={styles.headerBtn}
               onPress={() => router.back()}
@@ -55,7 +59,7 @@ export default function ProcedureDetailScreen() {
               <Ionicons name="arrow-forward" size={22} color={colors.textPrimary} />
             </TouchableOpacity>
             <ArabicText weight="semibold" color={colors.textPrimary} numberOfLines={1}>
-              {procedure.label}
+              {t("proc." + procedure.id + ".title")}
             </ArabicText>
             <TouchableOpacity style={styles.headerBtn}>
               <Ionicons name="ellipsis-horizontal" size={22} color={colors.gold} />
@@ -71,7 +75,7 @@ export default function ProcedureDetailScreen() {
         {/* Progress stepper */}
         <ContentCard>
           <ArabicText size="caption" weight="medium" color={colors.textMuted} style={{ textAlign: "center", marginBottom: spacing.md }}>
-            الخطوة {currentStep + 1} من {procedure.steps.length}
+            {t("procedure.step_counter", { current: currentStep + 1, total: procedure.steps.length })}
           </ArabicText>
           <View style={styles.stepper}>
             {procedure.steps.map((step, idx) => (
@@ -116,33 +120,32 @@ export default function ProcedureDetailScreen() {
         {/* Current step content */}
         <ContentCard>
           <ArabicText size="heading" weight="semibold" color={colors.textPrimary}>
-            {procedure.steps[currentStep]}
+            {t("proc." + procedure.id + ".step." + currentStep)}
           </ArabicText>
 
           {/* Required documents */}
-          <ArabicText weight="medium" color={colors.textSecondary} style={styles.sectionLabel}>
-            الوثائق المطلوبة:
+          <ArabicText weight="medium" color={colors.textSecondary} style={[styles.sectionLabel, { textAlign: dir.textAlign }]}>
+            {t("procedure.required_docs")}
           </ArabicText>
           {stepDocs.map((item, idx) => {
-            const docInfo = DocumentType[item.type as keyof typeof DocumentType];
             return (
-              <View key={idx} style={styles.docRow}>
+              <View key={idx} style={[styles.docRow, { flexDirection: dir.row }]}>
                 <TouchableOpacity
                   style={styles.docAction}
                   onPress={() =>
                     item.inVault
                       ? router.push(`/vault/${item.doc?.id}`)
-                      : Alert.alert("إضافة وثيقة", "انتقل إلى الخزينة لإضافة الوثيقة")
+                      : Alert.alert(t("procedure.add_doc_title"), t("procedure.add_doc_body"))
                   }
                 >
                   <ArabicText
                     size="caption"
                     color={item.inVault ? colors.safe : colors.gold}
                   >
-                    {item.inVault ? "موجود في الخزينة" : "أضف →"}
+                    {item.inVault ? t("procedure.in_vault") : t("procedure.add_arrow")}
                   </ArabicText>
                 </TouchableOpacity>
-                <View style={styles.docLabel}>
+                <View style={[styles.docLabel, { flexDirection: dir.row }]}>
                   <Ionicons
                     name={item.inVault ? "checkmark-circle" : "ellipse-outline"}
                     size={16}
@@ -153,7 +156,7 @@ export default function ProcedureDetailScreen() {
                     color={item.inVault ? colors.textPrimary : colors.textMuted}
                     weight={item.inVault ? "medium" : "regular"}
                   >
-                    {docInfo?.label ?? item.type}
+                    {t("doctype." + item.type)}
                   </ArabicText>
                 </View>
               </View>
@@ -164,14 +167,14 @@ export default function ProcedureDetailScreen() {
         {/* Deadline calculator */}
         {procedure.deadlines.length > 0 && (
           <ContentCard>
-            <View style={styles.sectionHeader}>
+            <View style={[styles.sectionHeader, { flexDirection: dir.row }]}>
               <Ionicons name="calendar-outline" size={18} color={colors.gold} />
               <ArabicText weight="semibold" color={colors.textPrimary}>
-                {procedure.deadlines[0].name}
+                {t("proc." + procedure.id + ".deadline.0")}
               </ArabicText>
             </View>
             <ArabicText size="caption" color={colors.textMuted}>
-              المهلة: {procedure.deadlines[0].days} يومًا من تاريخ الحدث
+              {t("procedure.deadline_info", { days: procedure.deadlines[0].days })}
             </ArabicText>
             <TextInput
               style={styles.dateInput}
@@ -183,13 +186,13 @@ export default function ProcedureDetailScreen() {
               textAlign="center"
             />
             <Button variant="secondary" size="sm" onPress={handleCalculateDeadline} fullWidth={false}>
-              احسب الموعد النهائي
+              {t("procedure.calculate_deadline")}
             </Button>
             {deadline && (
-              <View style={styles.deadlineResult}>
+              <View style={[styles.deadlineResult, { flexDirection: dir.row }]}>
                 <Ionicons name="warning" size={16} color={colors.caution} />
                 <ArabicText weight="semibold" color={colors.caution}>
-                  الموعد النهائي: {deadline}
+                  {t("procedure.deadline_result", { date: deadline })}
                 </ArabicText>
               </View>
             )}
@@ -203,14 +206,14 @@ export default function ProcedureDetailScreen() {
               variant="primary"
               onPress={() => setCurrentStep((s) => s + 1)}
             >
-              الخطوة التالية →
+              {t("procedure.next_step")}
             </Button>
           ) : (
             <Button
               variant="primary"
-              onPress={() => Alert.alert("مبروك!", "أكملت جميع الخطوات.")}
+              onPress={() => Alert.alert(t("procedure.done_title"), t("procedure.done_body"))}
             >
-              إتمام الإجراء ✓
+              {t("procedure.complete")}
             </Button>
           )}
           {currentStep > 0 && (
@@ -218,7 +221,7 @@ export default function ProcedureDetailScreen() {
               variant="ghost"
               onPress={() => setCurrentStep((s) => s - 1)}
             >
-              ← الخطوة السابقة
+              {t("procedure.prev_step")}
             </Button>
           )}
         </View>

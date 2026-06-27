@@ -9,11 +9,13 @@ import {
   ScrollView,
 } from "react-native";
 import { useRouter } from "expo-router";
+import { useTranslation } from "react-i18next";
 import { Ionicons } from "@expo/vector-icons";
 import { colors, radius, spacing, typography } from "../../constants/tokens";
 import { useAuthStore } from "../../store/authStore";
 import Button from "../../components/ui/Button";
 import ArabicText from "../../components/shared/ArabicText";
+import { useDirection } from "../../lib/direction";
 
 type Lang = "ar" | "fr" | "dar" | "ber";
 
@@ -38,12 +40,14 @@ const LANGUAGES: {
 
 export default function LanguageScreen() {
   const router = useRouter();
+  const { t } = useTranslation();
+  const dir = useDirection();
   const setLanguage = useAuthStore((s) => s.setLanguage);
   const [selected, setSelected] = useState<Lang | null>(null);
 
-  const handleContinue = () => {
+  const handleContinue = async () => {
     if (!selected) return;
-    setLanguage(selected);
+    await setLanguage(selected);
     router.push("/(auth)/otp");
   };
 
@@ -56,10 +60,19 @@ export default function LanguageScreen() {
           showsVerticalScrollIndicator={false}
         >
           {/* Header */}
-          <View style={styles.header}>
-            <Text style={styles.eyebrow}>MIZANE · LANGUE</Text>
-            <Text style={styles.heading}>اختر لغتك</Text>
-            <Text style={styles.headerFr}>Choisissez votre langue</Text>
+          <View style={[styles.header, { alignItems: dir.alignStart }]}>
+            <Text style={[styles.eyebrow, { textAlign: dir.textAlign }]}>MIZANE · LANGUE</Text>
+            <Text
+              style={[
+                styles.heading,
+                { textAlign: dir.textAlign, writingDirection: dir.writingDirection },
+              ]}
+            >
+              {t("language.heading")}
+            </Text>
+            <Text style={[styles.headerFr, { textAlign: dir.textAlign }]}>
+              {t("language.heading_fr")}
+            </Text>
           </View>
 
           {/* Language cards */}
@@ -73,6 +86,7 @@ export default function LanguageScreen() {
                   activeOpacity={lang.disabled ? 1 : 0.85}
                   style={[
                     styles.card,
+                    { flexDirection: dir.row },
                     isSelected && styles.cardSelected,
                     lang.disabled && styles.cardDisabled,
                   ]}
@@ -94,7 +108,7 @@ export default function LanguageScreen() {
                     ) : null}
                   </View>
 
-                  <View style={styles.cardText}>
+                  <View style={[styles.cardText, { alignItems: dir.alignStart }]}>
                     <ArabicText
                       weight="semibold"
                       color={
@@ -112,7 +126,7 @@ export default function LanguageScreen() {
                       size="caption"
                       color={lang.disabled ? colors.ink300 : colors.textMuted}
                     >
-                      {lang.disabled ? "قريباً / Bientôt" : lang.sublabel}
+                      {lang.disabled ? t("language.soon") : lang.sublabel}
                     </ArabicText>
                   </View>
 
@@ -130,7 +144,7 @@ export default function LanguageScreen() {
             disabled={!selected}
             onPress={handleContinue}
           >
-            متابعة / Continuer
+            {t("language.continue")}
           </Button>
         </View>
       </SafeAreaView>

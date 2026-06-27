@@ -1,15 +1,18 @@
 import React from "react";
 import { View, Image, TouchableOpacity, StyleSheet } from "react-native";
+import { useTranslation } from "react-i18next";
 import { colors, radius, spacing } from "../../constants/tokens";
 import { ORB_IMAGE } from "../../constants/assets";
+import { useDirection } from "../../lib/direction";
 import ArabicText from "../shared/ArabicText";
 
-// Suggested opening prompts. Each one is sent verbatim into the assistant.
-const SUGGESTIONS = [
-  "افحص صلاحية وثيقة لديّ",
-  "ما هي حقوقي كمستأجر؟",
-  "ساعدني في صياغة شكوى عمل",
-  "اشرح خطوات تجديد الإقامة",
+// Suggested opening prompts (translation keys). Each is resolved at render and
+// sent verbatim into the assistant.
+const SUGGESTION_KEYS = [
+  "assistant.suggestion.checkDoc",
+  "assistant.suggestion.tenantRights",
+  "assistant.suggestion.workComplaint",
+  "assistant.suggestion.residencyRenewal",
 ] as const;
 
 interface QuickActionsProps {
@@ -17,6 +20,8 @@ interface QuickActionsProps {
 }
 
 export default function QuickActions({ onActionPress }: QuickActionsProps) {
+  const { t } = useTranslation();
+  const dir = useDirection();
   return (
     <View style={styles.container}>
       {/* Hero orb with a soft gold halo */}
@@ -31,7 +36,7 @@ export default function QuickActions({ onActionPress }: QuickActionsProps) {
         align="center"
         style={styles.greeting}
       >
-        مرحباً، كيف يمكنني مساعدتك؟
+        {t("assistant.greeting")}
       </ArabicText>
       <ArabicText
         size="caption"
@@ -39,22 +44,29 @@ export default function QuickActions({ onActionPress }: QuickActionsProps) {
         align="center"
         style={styles.subtitle}
       >
-        مساعدك القانوني الخاص، يجيب بسرية تامة على كل ما يخص وثائقك وحقوقك.
+        {t("assistant.quick_subtitle")}
       </ArabicText>
 
       <View style={styles.list}>
-        {SUGGESTIONS.map((text) => (
-          <TouchableOpacity
-            key={text}
-            style={styles.pill}
-            onPress={() => onActionPress(text)}
-            activeOpacity={0.75}
-          >
-            <ArabicText weight="medium" color={colors.textPrimary} style={styles.pillText}>
-              {text}
-            </ArabicText>
-          </TouchableOpacity>
-        ))}
+        {SUGGESTION_KEYS.map((key) => {
+          const text = t(key);
+          return (
+            <TouchableOpacity
+              key={key}
+              style={styles.pill}
+              onPress={() => onActionPress(text)}
+              activeOpacity={0.75}
+            >
+              <ArabicText
+                weight="medium"
+                color={colors.textPrimary}
+                style={[styles.pillText, { textAlign: dir.textAlign }]}
+              >
+                {text}
+              </ArabicText>
+            </TouchableOpacity>
+          );
+        })}
       </View>
     </View>
   );

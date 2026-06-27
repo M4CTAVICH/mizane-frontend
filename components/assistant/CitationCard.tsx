@@ -2,6 +2,7 @@ import React from "react";
 import { View, TouchableOpacity, StyleSheet } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { colors, spacing, typography } from "../../constants/tokens";
+import { useDirection } from "../../lib/direction";
 import ArabicText from "../shared/ArabicText";
 import ContentCard from "../ui/ContentCard";
 import type { Citation } from "../../store/assistantStore";
@@ -12,22 +13,30 @@ interface CitationCardProps {
 }
 
 export default function CitationCard({ citation, onPress }: CitationCardProps) {
+  const dir = useDirection();
   return (
     <TouchableOpacity onPress={onPress} activeOpacity={0.8} style={styles.wrap}>
       <ContentCard padding={spacing.sm} style={styles.container}>
-        <View style={styles.header}>
+        <View style={[styles.header, { flexDirection: dir.row }]}>
           <Ionicons name="library-outline" size={14} color={colors.gold} />
           <ArabicText
             size="caption"
             weight="medium"
             color={colors.gold}
-            style={styles.ref}
+            style={[styles.ref, { textAlign: dir.textAlign }]}
           >
             {citation.article} · {citation.law}
           </ArabicText>
           <Ionicons name="arrow-forward" size={12} color={colors.textMuted} />
         </View>
-        <ArabicText size="caption" color={colors.textSecondary} style={styles.text}>
+        <ArabicText
+          size="caption"
+          color={colors.textSecondary}
+          style={[
+            styles.text,
+            { textAlign: dir.textAlign, writingDirection: dir.writingDirection },
+          ]}
+        >
           "{citation.text}"
         </ArabicText>
       </ContentCard>

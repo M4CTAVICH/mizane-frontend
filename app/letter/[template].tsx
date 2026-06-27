@@ -10,6 +10,7 @@ import {
   Alert,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { useTranslation } from "react-i18next";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { colors, radius, shadow, spacing, typography, textScale } from "../../constants/tokens";
 import { TEMPLATES } from "../../constants/tokens";
@@ -19,13 +20,15 @@ import Button from "../../components/ui/Button";
 import ContentCard from "../../components/ui/ContentCard";
 import { LiquidGlassContainer } from "../../components/ui/LiquidGlassContainer";
 import CitationCard from "../../components/assistant/CitationCard";
+import { useDirection } from "../../lib/direction";
 
 /** Floating glass header pill shared across the letter steps. */
 function GlassHeader({ children }: { children: React.ReactNode }) {
+  const dir = useDirection();
   return (
     <View style={styles.headerWrap}>
       <LiquidGlassContainer radius={radius.lg} padding={spacing.md}>
-        <View style={styles.headerRow}>{children}</View>
+        <View style={[styles.headerRow, { flexDirection: dir.row }]}>{children}</View>
       </LiquidGlassContainer>
     </View>
   );
@@ -69,6 +72,8 @@ const DEMO_CITATIONS = [
 ];
 
 export default function LetterScreen() {
+  const { t } = useTranslation();
+  const dir = useDirection();
   const { template } = useLocalSearchParams<{ template: string }>();
   const router = useRouter();
   const user = useAuthStore((s) => s.user);
@@ -96,32 +101,32 @@ export default function LetterScreen() {
             <Ionicons name="arrow-forward" size={22} color={colors.textPrimary} />
           </TouchableOpacity>
           <ArabicText weight="semibold" color={colors.textPrimary}>
-            اختر نوع الرسالة
+            {t("letter.select_template")}
           </ArabicText>
           <View style={{ width: 36 }} />
         </GlassHeader>
         <ScrollView contentContainerStyle={styles.templateGrid}>
-          {TEMPLATES.map((t) => (
+          {TEMPLATES.map((tpl) => (
             <TouchableOpacity
-              key={t.id}
+              key={tpl.id}
               style={[
                 styles.templateCard,
-                selectedTemplate.id === t.id && styles.templateCardSelected,
+                selectedTemplate.id === tpl.id && styles.templateCardSelected,
               ]}
               onPress={() => {
-                setSelectedTemplate(t);
+                setSelectedTemplate(tpl);
                 setStep("form");
               }}
               activeOpacity={0.8}
             >
               <View style={styles.templateIcon}>
-                <Ionicons name={t.icon as any} size={24} color={colors.gold} />
+                <Ionicons name={tpl.icon as any} size={24} color={colors.gold} />
               </View>
               <ArabicText weight="medium" color={colors.textPrimary} style={{ textAlign: "center", fontSize: 14 }}>
-                {t.label}
+                {t("template." + tpl.id)}
               </ArabicText>
               <Text style={[textScale.label, { textAlign: "center" }]}>
-                {t.labelFr}
+                {dir.isRTL ? tpl.labelFr : tpl.label}
               </Text>
             </TouchableOpacity>
           ))}
@@ -138,7 +143,7 @@ export default function LetterScreen() {
             <Ionicons name="arrow-forward" size={22} color={colors.textPrimary} />
           </TouchableOpacity>
           <ArabicText weight="semibold" color={colors.textPrimary}>
-            {selectedTemplate.label}
+            {t("template." + selectedTemplate.id)}
           </ArabicText>
           <View style={{ width: 36 }} />
         </GlassHeader>
@@ -146,29 +151,29 @@ export default function LetterScreen() {
         <ScrollView contentContainerStyle={styles.formContent}>
           {/* Auto-filled from vault */}
           <ArabicText size="heading" weight="semibold" color={colors.textPrimary}>
-            بياناتك
+            {t("letter.your_data")}
           </ArabicText>
           <ContentCard>
-            <View style={styles.autoFillRow}>
+            <View style={[styles.autoFillRow, { flexDirection: dir.row }]}>
               <Ionicons name="checkmark-circle" size={16} color={colors.safe} />
               <ArabicText size="caption" color={colors.textMuted}>
-                تم ملء البيانات تلقائياً من الخزينة
+                {t("letter.autofilled")}
               </ArabicText>
             </View>
-            <View style={styles.dataRow}>
-              <ArabicText size="caption" color={colors.textMuted}>الاسم:</ArabicText>
+            <View style={[styles.dataRow, { flexDirection: dir.row }]}>
+              <ArabicText size="caption" color={colors.textMuted}>{t("letter.field_name")}</ArabicText>
               <ArabicText size="caption" weight="medium" color={colors.textPrimary}>
                 {user?.name ?? "أمل حميدي"}
               </ArabicText>
             </View>
-            <View style={[styles.dataRow, styles.dataRowBorder]}>
-              <ArabicText size="caption" color={colors.textMuted}>رقم التعريف:</ArabicText>
+            <View style={[styles.dataRow, styles.dataRowBorder, { flexDirection: dir.row }]}>
+              <ArabicText size="caption" color={colors.textMuted}>{t("letter.field_nin")}</ArabicText>
               <ArabicText size="caption" weight="medium" color={colors.textPrimary} style={{ fontFamily: typography.fontMono }}>
                 {user?.nin ?? "123456789012345678"}
               </ArabicText>
             </View>
-            <View style={[styles.dataRow, styles.dataRowBorder]}>
-              <ArabicText size="caption" color={colors.textMuted}>العنوان:</ArabicText>
+            <View style={[styles.dataRow, styles.dataRowBorder, { flexDirection: dir.row }]}>
+              <ArabicText size="caption" color={colors.textMuted}>{t("letter.field_address")}</ArabicText>
               <ArabicText size="caption" weight="medium" color={colors.textPrimary}>
                 {user?.address ?? "حي 20 أوت، وهران"}
               </ArabicText>
@@ -176,13 +181,13 @@ export default function LetterScreen() {
           </ContentCard>
 
           <ArabicText size="heading" weight="semibold" color={colors.textPrimary}>
-            وصف الحالة
+            {t("letter.situation")}
           </ArabicText>
           <TextInput
-            style={styles.situationInput}
+            style={[styles.situationInput, { textAlign: dir.textAlign, writingDirection: dir.writingDirection }]}
             value={situation}
             onChangeText={setSituation}
-            placeholder="اشرح حالتك بإيجاز... مثلاً: تم فصلي من العمل دون سبب وجيه في تاريخ..."
+            placeholder={t("letter.situation_placeholder")}
             placeholderTextColor={colors.textMuted}
             multiline
             numberOfLines={6}
@@ -198,7 +203,7 @@ export default function LetterScreen() {
             <LiquidGlassContainer radius={radius.xl} padding={0} intensity={50} prominent style={shadow.gold}>
               <View style={styles.glassCta}>
                 <ArabicText weight="semibold" color={colors.gold} style={{ fontSize: 16 }}>
-                  {generating ? "جارٍ توليد الرسالة..." : "توليد الرسالة بالذكاء الاصطناعي"}
+                  {generating ? t("letter.generating") : t("letter.generate_ai")}
                 </ArabicText>
               </View>
             </LiquidGlassContainer>
@@ -216,7 +221,7 @@ export default function LetterScreen() {
           <Ionicons name="arrow-forward" size={22} color={colors.textPrimary} />
         </TouchableOpacity>
         <ArabicText weight="semibold" color={colors.textPrimary}>
-          معاينة الرسالة
+          {t("letter.preview_title")}
         </ArabicText>
         <TouchableOpacity>
           <Ionicons name="pencil-outline" size={22} color={colors.gold} />
@@ -227,7 +232,7 @@ export default function LetterScreen() {
         {/* Letter card */}
         <ContentCard variant="raised" padding={spacing.lg} style={styles.letterCard}>
           {/* Letter header */}
-          <View style={styles.letterHeader}>
+          <View style={[styles.letterHeader, { flexDirection: dir.row }]}>
             <ArabicText size="caption" color={colors.textMuted}>
               {new Date().toLocaleDateString("ar-DZ")}
             </ArabicText>
@@ -247,7 +252,7 @@ export default function LetterScreen() {
         {/* Citations */}
         <View style={styles.citationsSection}>
           <ArabicText weight="medium" color={colors.textSecondary}>
-            المصادر القانونية
+            {t("letter.legal_sources")}
           </ArabicText>
           {DEMO_CITATIONS.map((c, idx) => (
             <CitationCard key={idx} citation={c} />
@@ -256,14 +261,14 @@ export default function LetterScreen() {
 
         {/* Actions */}
         <View style={styles.actions}>
-          <Button variant="primary" onPress={() => Alert.alert("قريباً", "تحميل PDF سيكون متاحاً قريباً")}>
-            تحميل PDF
+          <Button variant="primary" onPress={() => Alert.alert(t("common.soon"), t("letter.pdf_soon_body"))}>
+            {t("letter.download_pdf")}
           </Button>
-          <Button variant="secondary" onPress={() => Alert.alert("قريباً", "التثبيت متاح قريباً")}>
-            تثبيت الإثبات
+          <Button variant="secondary" onPress={() => Alert.alert(t("common.soon"), t("letter.anchor_soon_body"))}>
+            {t("letter.anchor")}
           </Button>
           <Button variant="ghost" onPress={() => router.push("/(tabs)")}>
-            العودة للرئيسية
+            {t("letter.back_home")}
           </Button>
         </View>
       </ScrollView>

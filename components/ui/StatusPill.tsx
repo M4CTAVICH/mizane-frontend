@@ -1,5 +1,6 @@
 import React from "react";
 import { View, StyleSheet } from "react-native";
+import { useTranslation } from "react-i18next";
 import { colors, radius, spacing } from "../../constants/tokens";
 import ArabicText from "../shared/ArabicText";
 
@@ -7,13 +8,13 @@ type PillStatus = "valid" | "expiring" | "expired" | "missing" | "unverified";
 
 const STATUS_CONFIG: Record<
   PillStatus,
-  { bg: string; text: string; label: string }
+  { bg: string; text: string; labelKey: string }
 > = {
-  valid: { bg: colors.safeLight, text: colors.safe, label: "صالح" },
-  expiring: { bg: colors.cautionLight, text: colors.caution, label: "ينتهي قريبًا" },
-  expired: { bg: colors.dangerLight, text: colors.danger, label: "منتهي" },
-  missing: { bg: colors.ink200, text: colors.textMuted, label: "مفقود" },
-  unverified: { bg: colors.ink200, text: colors.textMuted, label: "غير موثق" },
+  valid: { bg: colors.safeLight, text: colors.safe, labelKey: "vault.status.valid" },
+  expiring: { bg: colors.cautionLight, text: colors.caution, labelKey: "vault.status.expiring" },
+  expired: { bg: colors.dangerLight, text: colors.danger, labelKey: "vault.status.expired" },
+  missing: { bg: colors.ink200, text: colors.textMuted, labelKey: "vault.status.missing" },
+  unverified: { bg: colors.ink200, text: colors.textMuted, labelKey: "vault.status.unverified" },
 };
 
 interface StatusPillProps {
@@ -22,6 +23,7 @@ interface StatusPillProps {
 }
 
 export default function StatusPill({ status, label }: StatusPillProps) {
+  const { t } = useTranslation();
   const config = STATUS_CONFIG[status];
   return (
     <View style={[styles.pill, { backgroundColor: config.bg }]}>
@@ -31,7 +33,7 @@ export default function StatusPill({ status, label }: StatusPillProps) {
         weight="medium"
         style={styles.text}
       >
-        {label ?? config.label}
+        {label ?? t(config.labelKey)}
       </ArabicText>
     </View>
   );

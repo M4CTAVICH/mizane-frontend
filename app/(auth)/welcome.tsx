@@ -10,6 +10,7 @@ import {
   TouchableOpacity,
 } from "react-native";
 import { useRouter } from "expo-router";
+import { useTranslation } from "react-i18next";
 import { LinearGradient } from "expo-linear-gradient";
 import Svg, { Defs, RadialGradient, Stop, Circle } from "react-native-svg";
 import { Ionicons } from "@expo/vector-icons";
@@ -17,11 +18,18 @@ import { colors, spacing, typography } from "../../constants/tokens";
 import { WELCOME_BG_IMAGE } from "../../constants/assets";
 import ArabicText from "../../components/shared/ArabicText";
 import MizanLogo from "../../components/ui/MizanLogo";
+import { useDirection } from "../../lib/direction";
 
-const FEATURES = ["اعرف حقوقك", "نظّم وثائقك", "اتخذ إجراءً"] as const;
+const FEATURE_KEYS = [
+  "welcome.feature_rights",
+  "welcome.feature_organize",
+  "welcome.feature_act",
+] as const;
 
 export default function WelcomeScreen() {
   const router = useRouter();
+  const { t } = useTranslation();
+  const dir = useDirection();
   const scaleAnim = useRef(new Animated.Value(0.9)).current;
   const opacityAnim = useRef(new Animated.Value(0)).current;
 
@@ -86,16 +94,16 @@ export default function WelcomeScreen() {
 
             <View style={styles.taglines}>
               <ArabicText weight="medium" color={colors.textPrimary} style={styles.taglineAr}>
-                مساعدك القانوني في جيبك
+                {t("welcome.subtitle")}
               </ArabicText>
-              <Text style={styles.taglineFr}>Votre assistant juridique</Text>
+              <Text style={styles.taglineFr}>{t("welcome.subtitle_fr")}</Text>
             </View>
 
-            <View style={styles.features}>
-              {FEATURES.map((f) => (
-                <View key={f} style={styles.featurePill}>
+            <View style={[styles.features, { flexDirection: dir.row }]}>
+              {FEATURE_KEYS.map((key) => (
+                <View key={key} style={styles.featurePill}>
                   <ArabicText size="caption" weight="medium" color={colors.textPrimary} style={styles.featureText}>
-                    {f}
+                    {t(key)}
                   </ArabicText>
                 </View>
               ))}
@@ -116,12 +124,12 @@ export default function WelcomeScreen() {
               />
               <Ionicons name="arrow-back" size={19} color={colors.inkBlue} />
               <ArabicText weight="semibold" color={colors.inkBlue} style={styles.ctaText}>
-                Commencer / ابدأ
+                {t("welcome.cta")}
               </ArabicText>
             </TouchableOpacity>
 
             <ArabicText size="caption" color={colors.textMuted} style={styles.privacy}>
-              مشفّر بالكامل · خصوصيتك مضمونة
+              {t("welcome.privacy")}
             </ArabicText>
           </View>
         </SafeAreaView>

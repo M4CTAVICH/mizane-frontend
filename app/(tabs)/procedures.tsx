@@ -10,25 +10,27 @@ import {
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
+import { useTranslation } from "react-i18next";
 import { colors, radius, spacing, typography } from "../../constants/tokens";
 import { PROCEDURES } from "../../constants/tokens";
 import { PROCEDURE_IMAGES } from "../../constants/assets";
 import ArabicText from "../../components/shared/ArabicText";
+import { useDirection } from "../../lib/direction";
 
 const FILTERS = [
-  { id: "all", label: "الكل" },
-  { id: "housing", label: "السكن" },
-  { id: "labor", label: "العمل" },
-  { id: "family", label: "الأسرة" },
-  { id: "documents", label: "الوثائق" },
+  { id: "all", labelKey: "procedures.filter.all" },
+  { id: "housing", labelKey: "procedures.filter.housing" },
+  { id: "labor", labelKey: "procedures.filter.labor" },
+  { id: "family", labelKey: "procedures.filter.family" },
+  { id: "documents", labelKey: "procedures.filter.documents" },
 ] as const;
 
-// Category → the short Arabic tag shown on each card.
-const CATEGORY_LABEL: Record<string, string> = {
-  labor: "العمل",
-  documents: "الوثائق",
-  family: "الأسرة",
-  housing: "السكن",
+// Category → the i18n key for the short tag shown on each card.
+const CATEGORY_LABEL_KEY: Record<string, string> = {
+  labor: "procedures.filter.labor",
+  documents: "procedures.filter.documents",
+  family: "procedures.filter.family",
+  housing: "procedures.filter.housing",
 };
 
 function toArabicDigits(value: string): string {
@@ -38,6 +40,8 @@ function toArabicDigits(value: string): string {
 
 export default function ProceduresScreen() {
   const router = useRouter();
+  const { t } = useTranslation();
+  const dir = useDirection();
   const [filter, setFilter] = useState<string>("all");
 
   const filtered =
@@ -48,12 +52,12 @@ export default function ProceduresScreen() {
   return (
     <View style={styles.container}>
       {/* ── Header ─────────────────────────────────────────────── */}
-      <View style={styles.headerWrap}>
+      <View style={[styles.headerWrap, { alignItems: dir.alignStart }]}>
         <ArabicText weight="semibold" color={colors.textPrimary} style={styles.title}>
-          الإجراءات
+          {t("procedures.title")}
         </ArabicText>
         <ArabicText size="caption" color={colors.textMuted} style={styles.subtitle}>
-          أدلّة موجّهة خطوة بخطوة لإنجاز معاملاتك
+          {t("procedures.subtitle")}
         </ArabicText>
       </View>
 
@@ -61,7 +65,7 @@ export default function ProceduresScreen() {
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.filters}
+        contentContainerStyle={[styles.filters, { flexDirection: dir.row }]}
         style={styles.filterScroll}
       >
         {FILTERS.map((f) => {
@@ -78,7 +82,7 @@ export default function ProceduresScreen() {
                 weight="semibold"
                 color={active ? colors.inkBlue : colors.textMuted}
               >
-                {f.label}
+                {t(f.labelKey)}
               </ArabicText>
             </TouchableOpacity>
           );
@@ -93,7 +97,9 @@ export default function ProceduresScreen() {
         showsVerticalScrollIndicator={false}
         renderItem={({ item }) => {
           const meta = toArabicDigits(
-            `${item.duration} · ${item.steps.length} خطوات · ${item.requiredDocs.length} وثائق`
+            `${t("proc." + item.id + ".duration")} · ${t("procedures.steps", {
+              count: item.steps.length,
+            })} · ${t("procedures.docs", { count: item.requiredDocs.length })}`
           );
           return (
             <TouchableOpacity
@@ -117,7 +123,7 @@ export default function ProceduresScreen() {
               </View>
 
               {/* Content (right-aligned) */}
-              <View style={styles.content}>
+              <View style={[styles.content, { alignItems: dir.alignStart }]}>
                 <View style={styles.catTag}>
                   <ArabicText
                     size="caption"
@@ -125,21 +131,23 @@ export default function ProceduresScreen() {
                     color={colors.gold}
                     style={styles.catTagText}
                   >
-                    {CATEGORY_LABEL[item.category] ?? ""}
+                    {CATEGORY_LABEL_KEY[item.category]
+                      ? t(CATEGORY_LABEL_KEY[item.category])
+                      : ""}
                   </ArabicText>
                 </View>
                 <ArabicText
                   weight="semibold"
                   color={colors.textPrimary}
-                  style={styles.cardTitle}
+                  style={[styles.cardTitle, { textAlign: dir.textAlign }]}
                   numberOfLines={1}
                 >
-                  {item.label}
+                  {t("proc." + item.id + ".title")}
                 </ArabicText>
-                <ArabicText color={colors.goldDeep} style={styles.cardSub} numberOfLines={1}>
-                  {item.labelFr}
+                <ArabicText color={colors.goldDeep} style={[styles.cardSub, { textAlign: dir.textAlign }]} numberOfLines={1}>
+                  {dir.isRTL ? item.labelFr : item.label}
                 </ArabicText>
-                <ArabicText size="caption" color={colors.textMuted} style={styles.cardMeta}>
+                <ArabicText size="caption" color={colors.textMuted} style={[styles.cardMeta, { textAlign: dir.textAlign }]}>
                   {meta}
                 </ArabicText>
               </View>

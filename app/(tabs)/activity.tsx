@@ -6,8 +6,10 @@ import {
   StyleSheet,
   Platform,
 } from "react-native";
+import { useTranslation } from "react-i18next";
 import { colors } from "../../constants/tokens";
 import ArabicText from "../../components/shared/ArabicText";
+import { useDirection } from "../../lib/direction";
 
 type Kind = "secured" | "reminder" | "document" | "message" | "procedure";
 
@@ -22,61 +24,61 @@ const KIND_COLOR: Record<Kind, string> = {
 interface ActivityEvent {
   id: string;
   kind: Kind;
-  title: string;
-  sub: string;
-  time: string;
+  titleKey: string;
+  subKey: string;
+  timeKey: string;
   live?: boolean;
 }
 
 interface Group {
-  label: string;
+  labelKey: string;
   events: ActivityEvent[];
 }
 
 const GROUPS: Group[] = [
   {
-    label: "اليوم",
+    labelKey: "activity.group.today",
     events: [
       {
         id: "1",
         kind: "secured",
-        title: "تم تثبيت عقد الميلاد",
-        sub: "محفوظ ومُشفّر في الخزينة",
-        time: "٣٢ دقيقة",
+        titleKey: "activity.event.birth_anchored",
+        subKey: "activity.event.birth_anchored_sub",
+        timeKey: "activity.time.minutes_32",
         live: true,
       },
       {
         id: "2",
         kind: "reminder",
-        title: "موعد شهادة الإقامة",
-        sub: "تنتهي صلاحيتها خلال ١٢ يوم",
-        time: "٣ ساعات",
+        titleKey: "activity.event.residence_due",
+        subKey: "activity.event.residence_due_sub",
+        timeKey: "activity.time.hours_3",
       },
     ],
   },
   {
-    label: "هذا الأسبوع",
+    labelKey: "activity.group.this_week",
     events: [
       {
         id: "3",
         kind: "document",
-        title: "تمت إضافة الوثيقة العائلية",
-        sub: "سارية المفعول",
-        time: "أمس",
+        titleKey: "activity.event.family_doc_added",
+        subKey: "activity.event.family_doc_added_sub",
+        timeKey: "activity.time.yesterday",
       },
       {
         id: "4",
         kind: "message",
-        title: "رسالة شكوى عمالية",
-        sub: "تم التوليد والحفظ",
-        time: "يومان",
+        titleKey: "activity.event.labor_complaint",
+        subKey: "activity.event.labor_complaint_sub",
+        timeKey: "activity.time.two_days",
       },
       {
         id: "5",
         kind: "procedure",
-        title: "بدأت إجراء تجديد جواز السفر",
-        sub: "الخطوة ١ من ٤",
-        time: "٣ أيام",
+        titleKey: "activity.event.passport_started",
+        subKey: "activity.event.passport_started_sub",
+        timeKey: "activity.time.three_days",
       },
     ],
   },
@@ -108,20 +110,22 @@ function PulseRing({ color }: { color: string }) {
 }
 
 function EventRow({ event, isLast }: { event: ActivityEvent; isLast: boolean }) {
+  const { t } = useTranslation();
+  const dir = useDirection();
   const color = KIND_COLOR[event.kind];
   return (
     <View style={[styles.eventRow, !isLast && styles.eventRowDivider]}>
-      <View style={styles.eventContent}>
-        <View style={styles.eventTextCol}>
-          <ArabicText weight="semibold" color={colors.textPrimary} style={styles.title} numberOfLines={1}>
-            {event.title}
+      <View style={[styles.eventContent, { flexDirection: dir.row }]}>
+        <View style={[styles.eventTextCol, { alignItems: dir.alignStart }]}>
+          <ArabicText weight="semibold" color={colors.textPrimary} style={[styles.title, { textAlign: dir.textAlign }]} numberOfLines={1}>
+            {t(event.titleKey)}
           </ArabicText>
-          <ArabicText color={colors.textMuted} style={styles.sub} numberOfLines={1}>
-            {event.sub}
+          <ArabicText color={colors.textMuted} style={[styles.sub, { textAlign: dir.textAlign }]} numberOfLines={1}>
+            {t(event.subKey)}
           </ArabicText>
         </View>
         <ArabicText color={colors.textMuted} style={styles.time}>
-          {event.time}
+          {t(event.timeKey)}
         </ArabicText>
       </View>
 
@@ -138,6 +142,8 @@ function EventRow({ event, isLast }: { event: ActivityEvent; isLast: boolean }) 
 }
 
 export default function ActivityScreen() {
+  const { t } = useTranslation();
+  const dir = useDirection();
   return (
     <View style={styles.container}>
       <ScrollView
@@ -146,20 +152,20 @@ export default function ActivityScreen() {
         showsVerticalScrollIndicator={false}
       >
         {/* Header */}
-        <View style={styles.header}>
+        <View style={[styles.header, { alignItems: dir.alignStart }]}>
           <ArabicText weight="semibold" color={colors.textPrimary} style={styles.h1}>
-            النشاط
+            {t("activity.title")}
           </ArabicText>
           <ArabicText color={colors.textMuted} style={styles.subtitle}>
-            خمسة أحداث · آخر تحديث منذ ٣٢ دقيقة
+            {t("activity.summary")}
           </ArabicText>
         </View>
 
         {/* Timeline sections */}
         {GROUPS.map((group) => (
-          <View key={group.label} style={styles.section}>
-            <ArabicText color={colors.textMuted} style={styles.eyebrow}>
-              {group.label}
+          <View key={group.labelKey} style={styles.section}>
+            <ArabicText color={colors.textMuted} style={[styles.eyebrow, { textAlign: dir.textAlign }]}>
+              {t(group.labelKey)}
             </ArabicText>
             <View style={styles.sectionBody}>
               <View style={styles.rail} />

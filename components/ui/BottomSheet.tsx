@@ -12,6 +12,7 @@ import {
 import { BlurView } from "expo-blur";
 import { LinearGradient } from "expo-linear-gradient";
 import { colors, radius, spacing, shadow } from "../../constants/tokens";
+import { useDirection } from "../../lib/direction";
 import ArabicText from "../shared/ArabicText";
 import { Ionicons } from "@expo/vector-icons";
 
@@ -32,6 +33,7 @@ export default function BottomSheet({
   children,
   maxHeight = SCREEN_HEIGHT * 0.85,
 }: BottomSheetProps) {
+  const dir = useDirection();
   const slideAnim = useRef(new Animated.Value(SCREEN_HEIGHT)).current;
 
   useEffect(() => {
@@ -83,7 +85,7 @@ export default function BottomSheet({
         />
         <View style={styles.handle} />
         {title ? (
-          <View style={styles.header}>
+          <View style={[styles.header, { flexDirection: dir.row }]}>
             <ArabicText size="heading" weight="semibold" color={colors.textPrimary}>
               {title}
             </ArabicText>

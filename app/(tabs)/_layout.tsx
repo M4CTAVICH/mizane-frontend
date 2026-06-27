@@ -1,5 +1,6 @@
 import React from "react";
 import { Tabs, useRouter } from "expo-router";
+import { useTranslation } from "react-i18next";
 import { TouchableOpacity, View, StyleSheet, Platform } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { BlurView } from "expo-blur";
@@ -42,6 +43,7 @@ function ScanButton({ onPress }: { onPress: () => void }) {
 
 export default function TabsLayout() {
   const router = useRouter();
+  const { t } = useTranslation();
 
   return (
     <Tabs
@@ -61,7 +63,7 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="activity"
         options={{
-          title: "النشاط",
+          title: t("nav.activity"),
           tabBarIcon: ({ color }) => (
             <Ionicons name="time-outline" size={21} color={color} />
           ),
@@ -70,7 +72,7 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="procedures"
         options={{
-          title: "الإجراءات",
+          title: t("nav.procedures"),
           tabBarIcon: ({ color }) => (
             <Ionicons name="list-outline" size={21} color={color} />
           ),
@@ -87,7 +89,7 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="vault"
         options={{
-          title: "الخزينة",
+          title: t("nav.vault"),
           tabBarIcon: ({ color }) => (
             <Ionicons name="lock-closed-outline" size={21} color={color} />
           ),
@@ -96,7 +98,7 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: "المساعد",
+          title: t("nav.assistant"),
           tabBarIcon: ({ color }) => (
             <Ionicons name="chatbubble-ellipses-outline" size={21} color={color} />
           ),

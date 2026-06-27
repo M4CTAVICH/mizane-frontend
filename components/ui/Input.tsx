@@ -7,6 +7,7 @@ import {
   ViewStyle,
 } from "react-native";
 import { colors, radius, spacing, typography } from "../../constants/tokens";
+import { useDirection } from "../../lib/direction";
 import ArabicText from "../shared/ArabicText";
 
 interface InputProps extends TextInputProps {
@@ -24,17 +25,25 @@ export default function Input({
   style,
   ...props
 }: InputProps) {
+  const dir = useDirection();
   return (
     <View style={[styles.container, containerStyle]}>
       {label ? (
-        <ArabicText size="caption" color={colors.textSecondary} style={styles.label}>
+        <ArabicText
+          size="caption"
+          color={colors.textSecondary}
+          style={[styles.label, { textAlign: dir.textAlign }]}
+        >
           {label}
         </ArabicText>
       ) : null}
       <TextInput
         style={[
           styles.input,
-          isArabic && styles.arabicInput,
+          isArabic && [
+            styles.arabicInput,
+            { textAlign: dir.textAlign, writingDirection: dir.writingDirection },
+          ],
           error ? styles.inputError : {},
           style,
         ]}
@@ -42,7 +51,11 @@ export default function Input({
         {...props}
       />
       {error ? (
-        <ArabicText size="caption" color={colors.danger} style={styles.error}>
+        <ArabicText
+          size="caption"
+          color={colors.danger}
+          style={[styles.error, { textAlign: dir.textAlign }]}
+        >
           {error}
         </ArabicText>
       ) : null}

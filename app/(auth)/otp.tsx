@@ -11,11 +11,13 @@ import {
   Platform,
 } from "react-native";
 import { useRouter } from "expo-router";
+import { useTranslation } from "react-i18next";
 import { LinearGradient } from "expo-linear-gradient";
 import { ActivityIndicator } from "react-native";
 import { colors, radius, spacing, typography } from "../../constants/tokens";
 import { useAuthStore, DEMO_USER } from "../../store/authStore";
 import ArabicText from "../../components/shared/ArabicText";
+import { useDirection } from "../../lib/direction";
 
 // Primary submit — gold gradient when actionable, flat matte when disabled
 // (matches the OTP resting state in Figma 6:505).
@@ -62,6 +64,8 @@ function SubmitButton({ label, onPress, disabled = false, loading = false }: Sub
 
 export default function OTPScreen() {
   const router = useRouter();
+  const { t } = useTranslation();
+  const dir = useDirection();
   const setUser = useAuthStore((s) => s.setUser);
 
   const [phone, setPhone] = useState("");
@@ -115,15 +119,23 @@ export default function OTPScreen() {
         <SafeAreaView style={styles.safe}>
           <View style={styles.content}>
             {/* Header */}
-            <View style={styles.header}>
-              <Text style={styles.eyebrow}>MIZANE · VÉRIFICATION</Text>
-              <Text style={styles.heading}>
-                {step === "phone" ? "أدخل رقمك" : "أدخل الرمز"}
+            <View style={[styles.header, { alignItems: dir.alignStart }]}>
+              <Text style={[styles.eyebrow, { textAlign: dir.textAlign }]}>MIZANE · VÉRIFICATION</Text>
+              <Text
+                style={[
+                  styles.heading,
+                  { textAlign: dir.textAlign, writingDirection: dir.writingDirection },
+                ]}
+              >
+                {step === "phone" ? t("otp.enter_phone") : t("otp.enter_code")}
               </Text>
-              <ArabicText color={colors.textMuted} style={styles.subtitle}>
+              <ArabicText
+                color={colors.textMuted}
+                style={[styles.subtitle, { textAlign: dir.textAlign }]}
+              >
                 {step === "phone"
-                  ? "سنرسل لك رمز التحقق برسالة نصية"
-                  : `أُرسل الرمز إلى +213 ${phone || "555 000 001"}`}
+                  ? t("otp.phone_hint")
+                  : t("otp.code_sent", { phone: phone || "555 000 001" })}
               </ArabicText>
             </View>
 
@@ -170,14 +182,14 @@ export default function OTPScreen() {
 
               {step === "phone" ? (
                 <SubmitButton
-                  label="إرسال الرمز"
+                  label={t("otp.send")}
                   disabled={phone.trim().length < 6}
                   onPress={handleSendOtp}
                 />
               ) : (
                 <>
                   <SubmitButton
-                    label="تحقق"
+                    label={t("otp.verify")}
                     loading={loading}
                     disabled={otp.join("").length < 6}
                     onPress={handleVerify}
@@ -192,8 +204,8 @@ export default function OTPScreen() {
                       style={styles.resend}
                     >
                       {countdown > 0
-                        ? `إعادة الإرسال خلال ${countdown}ث`
-                        : "إعادة الإرسال"}
+                        ? t("otp.resend_in", { count: countdown })
+                        : t("otp.resend")}
                     </ArabicText>
                   </TouchableOpacity>
                 </>
@@ -205,7 +217,7 @@ export default function OTPScreen() {
             {/* Skip (demo) */}
             <TouchableOpacity style={styles.skip} onPress={handleSkip}>
               <ArabicText weight="medium" color={colors.textMuted} style={styles.skipText}>
-                تخطّي (وضع العرض)
+                {t("otp.skip")}
               </ArabicText>
             </TouchableOpacity>
           </View>

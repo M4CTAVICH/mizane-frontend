@@ -1,5 +1,6 @@
 import React from "react";
 import { TouchableOpacity, View, StyleSheet } from "react-native";
+import { useTranslation } from "react-i18next";
 import { Ionicons } from "@expo/vector-icons";
 import { colors, typography, spacing } from "../../constants/tokens";
 import ArabicText from "./ArabicText";
@@ -11,11 +12,12 @@ interface ProofBadgeProps {
 }
 
 export default function ProofBadge({ timestamp, onPress, isPending }: ProofBadgeProps) {
+  const { t } = useTranslation();
   const label = isPending
-    ? "قيد التثبيت"
+    ? t("proof.pending")
     : timestamp
-      ? `تم التثبيت · ${new Date(timestamp).toLocaleDateString("ar-DZ")}`
-      : "تم التثبيت";
+      ? t("proof.anchored_on", { date: new Date(timestamp).toLocaleDateString("ar-DZ") })
+      : t("proof.anchored");
 
   return (
     <TouchableOpacity onPress={onPress} style={styles.container} activeOpacity={0.7}>

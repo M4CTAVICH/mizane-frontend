@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { TouchableOpacity, StyleSheet, Alert } from "react-native";
+import { useTranslation } from "react-i18next";
 import { Ionicons } from "@expo/vector-icons";
 import { colors } from "../../constants/tokens";
 
@@ -8,10 +9,11 @@ interface VoiceInputProps {
 }
 
 export default function VoiceInput({ onResult }: VoiceInputProps) {
+  const { t } = useTranslation();
   const [recording, setRecording] = useState(false);
 
   const handlePress = () => {
-    Alert.alert("قريباً", "ميزة الإدخال الصوتي ستكون متاحة قريباً");
+    Alert.alert(t("assistant.voice_soon_title"), t("assistant.voice_soon_body"));
   };
 
   return (

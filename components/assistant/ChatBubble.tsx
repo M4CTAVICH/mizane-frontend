@@ -1,6 +1,7 @@
 import React from "react";
 import { View, StyleSheet } from "react-native";
 import { colors, radius, spacing } from "../../constants/tokens";
+import { useDirection } from "../../lib/direction";
 import ArabicText from "../shared/ArabicText";
 import CitationCard from "./CitationCard";
 import type { Message } from "../../store/assistantStore";
@@ -21,9 +22,19 @@ function TypingDots() {
 
 export default function ChatBubble({ message }: ChatBubbleProps) {
   const isUser = message.role === "user";
+  const dir = useDirection();
+  // User bubble hugs the reading-start edge; assistant hugs the trailing edge.
+  // Expressed via dir.* so the asymmetry flips with the active language.
+  const sideAlign = isUser ? dir.alignStart : dir.alignEnd;
 
   return (
-    <View style={[styles.wrapper, isUser ? styles.wrapperUser : styles.wrapperAssistant]}>
+    <View
+      style={[
+        styles.wrapper,
+        isUser ? styles.wrapperUser : styles.wrapperAssistant,
+        { alignSelf: sideAlign, alignItems: sideAlign },
+      ]}
+    >
       <View style={[styles.bubble, isUser ? styles.bubbleUser : styles.bubbleAssistant]}>
         {message.isLoading ? (
           <TypingDots />

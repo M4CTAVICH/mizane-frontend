@@ -1,7 +1,8 @@
 import "../global.css";
 import "../lib/i18n";
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { View } from "react-native";
+import { useAuthStore } from "../store/authStore";
 import { Stack } from "expo-router";
 import { ThemeProvider, DarkTheme, type Theme } from "@react-navigation/native";
 import { StatusBar } from "expo-status-bar";
@@ -61,13 +62,22 @@ export default function RootLayout() {
     "ArefRuqaa-Bold": ArefRuqaa_700Bold,
   });
 
+  const loadLanguage = useAuthStore((s) => s.loadLanguage);
+  const [languageReady, setLanguageReady] = useState(false);
+
+  // Resolve the persisted/device language before the first paint so the UI
+  // renders in the correct language and direction from the start.
   useEffect(() => {
-    if (fontsLoaded || fontError) {
+    loadLanguage().finally(() => setLanguageReady(true));
+  }, [loadLanguage]);
+
+  useEffect(() => {
+    if ((fontsLoaded || fontError) && languageReady) {
       SplashScreen.hideAsync();
     }
-  }, [fontsLoaded, fontError]);
+  }, [fontsLoaded, fontError, languageReady]);
 
-  if (!fontsLoaded && !fontError) return null;
+  if ((!fontsLoaded && !fontError) || !languageReady) return null;
 
   return (
     <QueryClientProvider client={queryClient}>

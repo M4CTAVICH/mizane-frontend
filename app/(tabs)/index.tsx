@@ -1,4 +1,5 @@
 import React, { useState, useRef, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import {
   View,
   Text,
@@ -19,6 +20,7 @@ import ArabicText from "../../components/shared/ArabicText";
 import { LiquidGlassContainer } from "../../components/ui/LiquidGlassContainer";
 import ChatBubble from "../../components/assistant/ChatBubble";
 import QuickActions from "../../components/assistant/QuickActions";
+import { useDirection } from "../../lib/direction";
 import type { Message } from "../../store/assistantStore";
 
 function generateId() {
@@ -26,6 +28,8 @@ function generateId() {
 }
 
 export default function AssistantScreen() {
+  const { t } = useTranslation();
+  const dir = useDirection();
   const { messages, addMessage, updateLastMessage, setTyping, isTyping, conversationId, setConversationId } =
     useAssistantStore();
   const user = useAuthStore((s) => s.user);
@@ -138,15 +142,15 @@ export default function AssistantScreen() {
         <View style={styles.composerWrap}>
           <View style={styles.composer}>
             <View style={styles.composerHighlight} pointerEvents="none" />
-            <View style={styles.inputRow}>
+            <View style={[styles.inputRow, { flexDirection: dir.row }]}>
               <TouchableOpacity style={styles.micBtn} activeOpacity={0.7}>
                 <Ionicons name="mic-outline" size={18} color={colors.textMuted} />
               </TouchableOpacity>
               <TextInput
-                style={styles.input}
+                style={[styles.input, { textAlign: dir.textAlign }]}
                 value={input}
                 onChangeText={setInput}
-                placeholder="اكتب سؤالك..."
+                placeholder={t("assistant.placeholder")}
                 placeholderTextColor={colors.textMuted}
                 multiline
                 returnKeyType="send"

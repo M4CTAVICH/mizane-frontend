@@ -10,24 +10,25 @@ import {
   Platform,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { useTranslation } from "react-i18next";
 import { LinearGradient } from "expo-linear-gradient";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { colors, spacing } from "../../constants/tokens";
 import { useVaultStore, type VaultDocument } from "../../store/vaultStore";
-import { DocumentType } from "../../constants/tokens";
 import { DOC_THUMBNAILS, DOC_THUMBNAIL_FALLBACK } from "../../constants/assets";
 import ArabicText from "../../components/shared/ArabicText";
 import Button from "../../components/ui/Button";
 import { mockAnchor } from "../../lib/proof";
+import { useDirection } from "../../lib/direction";
 
 type Status = VaultDocument["status"];
 
-const STATUS_TAG: Record<Status, { label: string; color: string }> = {
-  valid: { label: "صالح", color: "#5FB38A" },
-  expiring: { label: "ينتهي قريباً", color: colors.caution },
-  expired: { label: "منتهي", color: colors.danger },
-  missing: { label: "مفقود", color: colors.textMuted },
-  unverified: { label: "غير محقّق", color: colors.textMuted },
+const STATUS_TAG: Record<Status, { labelKey: string; color: string }> = {
+  valid: { labelKey: "vault.status.valid", color: "#5FB38A" },
+  expiring: { labelKey: "vault.status.expiring", color: colors.caution },
+  expired: { labelKey: "vault.status.expired", color: colors.danger },
+  missing: { labelKey: "vault.status.missing", color: colors.textMuted },
+  unverified: { labelKey: "vault.status.unverified", color: colors.textMuted },
 };
 
 /** Format an ISO date string as YYYY/M/D (Gregorian, no leading zeros). */
@@ -47,8 +48,9 @@ function InfoRow({
   value: string;
   divider?: boolean;
 }) {
+  const dir = useDirection();
   return (
-    <View style={[styles.infoRow, divider && styles.infoRowDivider]}>
+    <View style={[styles.infoRow, divider && styles.infoRowDivider, { flexDirection: dir.row }]}>
       <ArabicText weight="medium" color={colors.textPrimary} style={styles.infoValue}>
         {value}
       </ArabicText>
@@ -60,6 +62,8 @@ function InfoRow({
 }
 
 export default function DocumentDetailScreen() {
+  const { t } = useTranslation();
+  const dir = useDirection();
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const { documents, updateDocument } = useVaultStore();
@@ -71,16 +75,15 @@ export default function DocumentDetailScreen() {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.notFound}>
-          <ArabicText color={colors.textMuted}>الوثيقة غير موجودة</ArabicText>
+          <ArabicText color={colors.textMuted}>{t("vault.not_found")}</ArabicText>
           <Button variant="ghost" onPress={() => router.back()}>
-            رجوع
+            {t("vault.back")}
           </Button>
         </View>
       </SafeAreaView>
     );
   }
 
-  const docInfo = DocumentType[doc.type];
   const tag = STATUS_TAG[doc.status];
   const expiry = formatDate(doc.expiresAt);
   const securedDate = formatDate(doc.createdAt);
@@ -88,7 +91,7 @@ export default function DocumentDetailScreen() {
   const heroImage = DOC_THUMBNAILS[doc.type] ?? DOC_THUMBNAIL_FALLBACK;
 
   const statusValue =
-    doc.status === "valid" && expiry ? `صالحة حتى ${expiry}` : tag.label;
+    doc.status === "valid" && expiry ? t("vault.valid_until", { date: expiry }) : t(tag.labelKey);
 
   const handleAnchor = async () => {
     setAnchoring(true);
@@ -96,13 +99,13 @@ export default function DocumentDetailScreen() {
     const proof = mockAnchor(doc.id);
     updateDocument(doc.id, { anchorRef: proof.anchorRef });
     setAnchoring(false);
-    Alert.alert("تم التثبيت", `رمز التحقق:\n${proof.anchorRef}`);
+    Alert.alert(t("vault.anchored_title"), t("vault.anchor_ref", { ref: proof.anchorRef }));
   };
 
   return (
     <SafeAreaView style={styles.container}>
       {/* Header — circular glass back button + centered title */}
-      <View style={styles.header}>
+      <View style={[styles.header, { flexDirection: dir.row }]}>
         <TouchableOpacity
           style={styles.backBtn}
           onPress={() => router.back()}
@@ -112,7 +115,7 @@ export default function DocumentDetailScreen() {
           <Ionicons name="arrow-forward" size={19} color={colors.textPrimary} />
         </TouchableOpacity>
         <ArabicText weight="semibold" color={colors.textPrimary} numberOfLines={1} style={styles.headerTitle}>
-          {doc.name}
+          {t("doctype." + doc.type)}
         </ArabicText>
         <View style={styles.headerSpacer} />
       </View>
@@ -131,20 +134,20 @@ export default function DocumentDetailScreen() {
             end={{ x: 0.5, y: 1 }}
             style={StyleSheet.absoluteFill}
           />
-          <View style={styles.heroContent}>
+          <View style={[styles.heroContent, { alignItems: dir.alignStart }]}>
             <View style={[styles.statusTag, { backgroundColor: `${tag.color}1F` }]}>
               <ArabicText weight="semibold" color={tag.color} style={styles.statusTagText}>
-                {tag.label}
+                {t(tag.labelKey)}
               </ArabicText>
             </View>
-            <ArabicText weight="semibold" color={colors.textPrimary} style={styles.heroTitle}>
-              {doc.name}
+            <ArabicText weight="semibold" color={colors.textPrimary} style={[styles.heroTitle, { textAlign: dir.textAlign }]}>
+              {t("doctype." + doc.type)}
             </ArabicText>
-            <View style={styles.heroMetaRow}>
+            <View style={[styles.heroMetaRow, { flexDirection: dir.row }]}>
               <ArabicText color={colors.textMuted} style={styles.heroMeta}>
                 {isAnchored && securedDate
-                  ? `مثبّتة بأمان · ${securedDate}`
-                  : "غير مثبّتة بعد"}
+                  ? t("vault.secured_on", { date: securedDate })
+                  : t("vault.not_secured")}
               </ArabicText>
               {isAnchored ? (
                 <Ionicons name="shield-checkmark" size={13} color="#5FB38A" />
@@ -155,22 +158,22 @@ export default function DocumentDetailScreen() {
 
         {/* Expiry highlight */}
         {expiry ? (
-          <View style={styles.expiryCard}>
+          <View style={[styles.expiryCard, { flexDirection: dir.row }]}>
             <ArabicText weight="semibold" color={colors.textPrimary} style={styles.expiryDate}>
               {expiry}
             </ArabicText>
             <ArabicText color={colors.textMuted} style={styles.expiryLabel}>
-              صالحة حتى
+              {t("vault.expires")}
             </ArabicText>
           </View>
         ) : null}
 
         {/* Info card */}
         <View style={styles.infoCard}>
-          <InfoRow label="نوع الوثيقة" value={docInfo?.label ?? doc.type} />
-          <InfoRow label="الحالة" value={statusValue} divider />
+          <InfoRow label={t("vault.doc_type")} value={t("doctype." + doc.type)} />
+          <InfoRow label={t("vault.status_label")} value={statusValue} divider />
           {securedDate ? (
-            <InfoRow label="تاريخ التثبيت" value={securedDate} divider />
+            <InfoRow label={t("vault.anchored_date")} value={securedDate} divider />
           ) : null}
         </View>
 
@@ -178,25 +181,25 @@ export default function DocumentDetailScreen() {
         {isAnchored ? (
           <PrimaryAction
             icon="language"
-            label="ترجمة الوثيقة"
-            onPress={() => Alert.alert("قريباً", "ميزة الترجمة قادمة")}
+            label={t("vault.translate_doc")}
+            onPress={() => Alert.alert(t("common.soon"), t("vault.translate_soon_body"))}
           />
         ) : (
           <PrimaryAction
             icon="shield-checkmark"
-            label={anchoring ? "جارٍ التثبيت..." : "تثبيت الإثبات"}
+            label={anchoring ? t("vault.anchoring") : t("vault.anchor")}
             loading={anchoring}
             onPress={handleAnchor}
           />
         )}
         <TouchableOpacity
-          style={styles.secondaryBtn}
+          style={[styles.secondaryBtn, { flexDirection: dir.row }]}
           activeOpacity={0.85}
-          onPress={() => Alert.alert("قريباً", "ميزة المشاركة قادمة")}
+          onPress={() => Alert.alert(t("common.soon"), t("vault.share_soon_body"))}
         >
           <Ionicons name="share-social-outline" size={18} color={colors.textPrimary} />
           <ArabicText weight="semibold" color={colors.textPrimary} style={styles.secondaryText}>
-            مشاركة
+            {t("vault.share")}
           </ArabicText>
         </TouchableOpacity>
       </ScrollView>
@@ -215,9 +218,10 @@ function PrimaryAction({
   onPress: () => void;
   loading?: boolean;
 }) {
+  const dir = useDirection();
   return (
     <TouchableOpacity
-      style={styles.primaryBtn}
+      style={[styles.primaryBtn, { flexDirection: dir.row }]}
       activeOpacity={0.85}
       onPress={onPress}
       disabled={loading}

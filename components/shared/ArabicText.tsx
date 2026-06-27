@@ -1,6 +1,7 @@
 import React from "react";
-import { Text, TextStyle, StyleSheet } from "react-native";
+import { Text, TextStyle } from "react-native";
 import { colors, typography } from "../../constants/tokens";
+import { useDirection } from "../../lib/direction";
 
 interface ArabicTextProps {
   children: React.ReactNode;
@@ -18,9 +19,13 @@ export default function ArabicText({
   size = "body",
   weight = "regular",
   color = colors.textPrimary,
-  align = "right",
+  align,
   numberOfLines,
 }: ArabicTextProps) {
+  const dir = useDirection();
+  // Default to the active language's natural alignment/direction; an explicit
+  // `align` prop still wins for intentionally centered/overridden text.
+  const resolvedAlign = align ?? dir.textAlign;
   const fontFamily =
     weight === "semibold"
       ? typography.fontArabicSemiBold
@@ -43,8 +48,7 @@ export default function ArabicText({
   return (
     <Text
       style={[
-        styles.base,
-        { fontFamily, fontSize, lineHeight, color, textAlign: align },
+        { fontFamily, fontSize, lineHeight, color, textAlign: resolvedAlign, writingDirection: dir.writingDirection },
         style,
       ]}
       numberOfLines={numberOfLines}
@@ -53,9 +57,3 @@ export default function ArabicText({
     </Text>
   );
 }
-
-const styles = StyleSheet.create({
-  base: {
-    writingDirection: "rtl",
-  },
-});

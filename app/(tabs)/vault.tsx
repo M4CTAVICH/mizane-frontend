@@ -11,12 +11,14 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
+import { useTranslation } from "react-i18next";
 import { colors, spacing, radius, typography, textScale } from "../../constants/tokens";
 import { useVaultStore } from "../../store/vaultStore";
 import { VAULT_HERO_IMAGE } from "../../constants/assets";
 import ArabicText from "../../components/shared/ArabicText";
 import { LiquidGlassContainer } from "../../components/ui/LiquidGlassContainer";
 import DocumentCard from "../../components/vault/DocumentCard";
+import { useDirection } from "../../lib/direction";
 
 // Western digits → Arabic-Indic, so metrics read natively in the RTL layout.
 function toArabicDigits(value: number | string): string {
@@ -41,6 +43,8 @@ function SummaryTag({ count, label, color }: SummaryTagProps) {
 }
 
 export default function VaultScreen() {
+  const { t } = useTranslation();
+  const dir = useDirection();
   const documents = useVaultStore((s) => s.documents);
   const [search, setSearch] = useState("");
 
@@ -70,15 +74,15 @@ export default function VaultScreen() {
             end={{ x: 1, y: 1 }}
             style={StyleSheet.absoluteFill}
           />
-          <View style={styles.heroContent}>
+          <View style={[styles.heroContent, { alignItems: dir.alignStart }]}>
             <ArabicText size="caption" color={colors.textMuted} style={styles.heroLabel}>
-              إجمالي الوثائق المحفوظة
+              {t("vault.total_saved")}
             </ArabicText>
             <Text style={styles.heroMetric}>{toArabicDigits(documents.length)}</Text>
-            <View style={styles.heroTags}>
-              <SummaryTag count={valid} label="صالح" color={colors.safe} />
-              <SummaryTag count={expiring} label="ينتهي" color={colors.caution} />
-              <SummaryTag count={expired} label="منتهٍ" color={colors.danger} />
+            <View style={[styles.heroTags, { flexDirection: dir.row }]}>
+              <SummaryTag count={valid} label={t("vault.status.valid")} color={colors.safe} />
+              <SummaryTag count={expiring} label={t("vault.summary.expiring")} color={colors.caution} />
+              <SummaryTag count={expired} label={t("vault.summary.expired")} color={colors.danger} />
             </View>
           </View>
         </ImageBackground>
@@ -87,7 +91,7 @@ export default function VaultScreen() {
       {/* Search — active input field → Liquid Glass (functional layer) */}
       <View style={styles.searchWrap}>
         <LiquidGlassContainer radius={radius.md} padding={0} intensity={40}>
-          <View style={styles.searchRow}>
+          <View style={[styles.searchRow, { flexDirection: dir.row }]}>
             <Ionicons
               name="search-outline"
               size={18}
@@ -95,10 +99,10 @@ export default function VaultScreen() {
               style={styles.searchIcon}
             />
             <TextInput
-              style={styles.searchInput}
+              style={[styles.searchInput, { textAlign: dir.textAlign }]}
               value={search}
               onChangeText={setSearch}
-              placeholder="ابحث عن وثيقة..."
+              placeholder={t("vault.search")}
               placeholderTextColor={colors.textMuted}
             />
           </View>
@@ -109,11 +113,11 @@ export default function VaultScreen() {
       <View style={styles.sectionHeader}>
         <TouchableOpacity hitSlop={8} activeOpacity={0.7}>
           <ArabicText size="caption" weight="semibold" color={colors.gold}>
-            عرض الكل
+            {t("vault.view_all")}
           </ArabicText>
         </TouchableOpacity>
         <ArabicText weight="semibold" color={colors.textPrimary} style={styles.sectionTitle}>
-          الوثائق الأخيرة
+          {t("vault.recent")}
         </ArabicText>
       </View>
     </View>
@@ -133,14 +137,14 @@ export default function VaultScreen() {
             />
             <Ionicons name="add" size={24} color={colors.inkBlue} />
           </TouchableOpacity>
-          <View style={{ alignItems: "flex-end" }}>
+          <View style={{ alignItems: dir.alignStart }}>
             <Text style={textScale.label}>VAULT</Text>
             <ArabicText
               weight="semibold"
               color={colors.textPrimary}
               style={styles.headerTitle}
             >
-              خزينتي
+              {t("vault.title")}
             </ArabicText>
           </View>
         </View>
@@ -159,7 +163,7 @@ export default function VaultScreen() {
           <View style={styles.emptyState}>
             <Ionicons name="folder-open-outline" size={48} color={colors.ink300} />
             <ArabicText color={colors.textMuted} style={{ textAlign: "center" }}>
-              لا توجد وثائق. ابدأ بإضافة وثيقة.
+              {t("vault.empty")}
             </ArabicText>
           </View>
         }

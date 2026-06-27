@@ -1,5 +1,6 @@
 import React from "react";
 import { View, ActivityIndicator, StyleSheet } from "react-native";
+import { useTranslation } from "react-i18next";
 import { colors } from "../../constants/tokens";
 import ArabicText from "./ArabicText";
 
@@ -10,16 +11,18 @@ interface LoadingStateProps {
 }
 
 export default function LoadingState({
-  message = "جارٍ التحميل...",
+  message,
   size = "large",
   fullScreen = false,
 }: LoadingStateProps) {
+  const { t } = useTranslation();
+  const text = message ?? t("common.loading");
   return (
     <View style={[styles.container, fullScreen && styles.fullScreen]}>
       <ActivityIndicator size={size} color={colors.gold} />
-      {message ? (
+      {text ? (
         <ArabicText size="caption" color={colors.textMuted} style={styles.text}>
-          {message}
+          {text}
         </ArabicText>
       ) : null}
     </View>

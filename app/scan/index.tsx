@@ -9,6 +9,7 @@ import {
   Platform,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { useTranslation } from "react-i18next";
 import { useRouter } from "expo-router";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import * as ImagePicker from "expo-image-picker";
@@ -21,6 +22,7 @@ import Button from "../../components/ui/Button";
 import ContentCard from "../../components/ui/ContentCard";
 import { LiquidGlassContainer } from "../../components/ui/LiquidGlassContainer";
 import { scanApi } from "../../lib/api";
+import { useDirection } from "../../lib/direction";
 
 const DNA_CHECKS_DEMO = [
   { id: "official_stamp", label: "ختم رسمي موجود", passed: true },
@@ -43,6 +45,8 @@ interface ScanResult {
 }
 
 export default function ScanScreen() {
+  const { t } = useTranslation();
+  const dir = useDirection();
   const router = useRouter();
   const [permission, requestPermission] = useCameraPermissions();
   const [processing, setProcessing] = useState(false);
@@ -65,7 +69,7 @@ export default function ScanScreen() {
       });
       setSheetVisible(true);
     } catch {
-      Alert.alert("خطأ", "فشل تحليل الوثيقة. حاول مجدداً.");
+      Alert.alert(t("common.error"), t("scan.analyze_failed"));
     } finally {
       setProcessing(false);
     }
@@ -87,14 +91,14 @@ export default function ScanScreen() {
         <View style={styles.permContainer}>
           <Ionicons name="camera-outline" size={64} color={colors.gold} />
           <ArabicText size="heading" weight="semibold" color={colors.textPrimary} style={{ textAlign: "center" }}>
-            نحتاج صلاحية الكاميرا
+            {t("scan.camera_permission")}
           </ArabicText>
           <Button variant="primary" onPress={requestPermission}>
-            منح الصلاحية
+            {t("scan.grant_permission")}
           </Button>
           <TouchableOpacity onPress={() => router.back()}>
             <ArabicText size="caption" color={colors.textSecondary}>
-              إغلاق
+              {t("common.close")}
             </ArabicText>
           </TouchableOpacity>
         </View>
@@ -115,7 +119,7 @@ export default function ScanScreen() {
       <View style={StyleSheet.absoluteFill}>
         {/* Top bar — glass chrome over the camera feed */}
         <SafeAreaView>
-          <View style={styles.topBar}>
+          <View style={[styles.topBar, { flexDirection: dir.row }]}>
             <TouchableOpacity
               onPress={() => router.back()}
               activeOpacity={0.8}
@@ -125,7 +129,7 @@ export default function ScanScreen() {
               </LiquidGlassContainer>
             </TouchableOpacity>
             <ArabicText weight="semibold" color={colors.textPrimary} style={styles.topTitle}>
-              فحص وثيقة
+              {t("scan.title")}
             </ArabicText>
           </View>
         </SafeAreaView>
@@ -142,7 +146,7 @@ export default function ScanScreen() {
             ))}
           </View>
           <ArabicText color="rgba(255,255,255,0.8)" style={{ textAlign: "center", marginTop: spacing.md }}>
-            اصوّر الوثيقة داخل الإطار
+            {t("scan.frame_hint")}
           </ArabicText>
         </View>
 
@@ -150,7 +154,7 @@ export default function ScanScreen() {
         {processing && (
           <View style={styles.processingOverlay}>
             <LoadingState
-              message="جارٍ تحليل الوثيقة..."
+              message={t("scan.processing")}
               fullScreen={false}
             />
           </View>
@@ -161,7 +165,7 @@ export default function ScanScreen() {
           <TouchableOpacity style={styles.galleryBtn} onPress={handleGallery}>
             <Ionicons name="images-outline" size={22} color="#fff" />
             <ArabicText size="caption" color="#fff">
-              المعرض
+              {t("scan.gallery_short")}
             </ArabicText>
           </TouchableOpacity>
           <TouchableOpacity
@@ -180,20 +184,20 @@ export default function ScanScreen() {
       <BottomSheet
         visible={sheetVisible}
         onClose={() => setSheetVisible(false)}
-        title="نتائج الفحص"
+        title={t("scan.results")}
         maxHeight={680}
       >
         {result && (
           <View style={styles.resultsContent}>
             {/* Document type */}
             <ContentCard variant={result.authentic ? "verified" : "flagged"}>
-              <View style={styles.resultRow}>
+              <View style={[styles.resultRow, { flexDirection: dir.row }]}>
                 <Ionicons
                   name={result.authentic ? "checkmark-circle" : "warning"}
                   size={22}
                   color={result.authentic ? colors.safe : colors.danger}
                 />
-                <View style={{ flex: 1, alignItems: "flex-end" }}>
+                <View style={{ flex: 1, alignItems: dir.alignStart }}>
                   <ArabicText weight="semibold" color={colors.textPrimary}>
                     {result.documentType}
                   </ArabicText>
@@ -203,10 +207,10 @@ export default function ScanScreen() {
 
             {/* Summary in Darija */}
             <View style={styles.section}>
-              <View style={styles.sectionHeader}>
+              <View style={[styles.sectionHeader, { flexDirection: dir.row }]}>
                 <Ionicons name="chatbubble-outline" size={16} color={colors.gold} />
                 <ArabicText weight="medium" color={colors.textPrimary}>
-                  ملخص بالدارجة
+                  {t("scan.summary")}
                 </ArabicText>
               </View>
               <ContentCard>
@@ -218,10 +222,10 @@ export default function ScanScreen() {
 
             {/* DNA checks */}
             <View style={styles.section}>
-              <View style={styles.sectionHeader}>
+              <View style={[styles.sectionHeader, { flexDirection: dir.row }]}>
                 <Ionicons name="fitness-outline" size={16} color={colors.gold} />
                 <ArabicText weight="medium" color={colors.textPrimary}>
-                  فحص الأصالة
+                  {t("scan.dna")}
                 </ArabicText>
               </View>
               <DNAResult checks={result.dnaChecks} authentic={result.authentic} />
@@ -230,15 +234,15 @@ export default function ScanScreen() {
             {/* Abusive clauses */}
             {result.flags.length > 0 && (
               <View style={styles.section}>
-                <View style={styles.sectionHeader}>
+                <View style={[styles.sectionHeader, { flexDirection: dir.row }]}>
                   <Ionicons name="warning-outline" size={16} color={colors.danger} />
                   <ArabicText weight="medium" color={colors.danger}>
-                    بنود مشبوهة
+                    {t("scan.flags")}
                   </ArabicText>
                 </View>
                 <ContentCard variant="flagged">
                   {result.flags.map((flag, idx) => (
-                    <View key={idx} style={styles.flagItem}>
+                    <View key={idx} style={[styles.flagItem, { alignItems: dir.alignStart }]}>
                       <ArabicText weight="medium" color={colors.danger}>
                         • {flag.clause}
                       </ArabicText>
@@ -252,7 +256,7 @@ export default function ScanScreen() {
             )}
 
             {/* CTA buttons */}
-            <View style={styles.ctaRow}>
+            <View style={[styles.ctaRow, { flexDirection: dir.row }]}>
               <Button
                 variant="secondary"
                 size="md"
@@ -263,7 +267,7 @@ export default function ScanScreen() {
                   router.push("/(tabs)");
                 }}
               >
-                اسأل ميزان
+                {t("scan.ask_rights")}
               </Button>
               <Button
                 variant="primary"
@@ -275,7 +279,7 @@ export default function ScanScreen() {
                   router.push("/letter/eviction_response");
                 }}
               >
-                أنشئ ردًّا
+                {t("scan.create_response")}
               </Button>
             </View>
           </View>

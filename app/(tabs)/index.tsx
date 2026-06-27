@@ -16,6 +16,7 @@ import { colors, spacing, radius, typography } from "../../constants/tokens";
 import { useAssistantStore } from "../../store/assistantStore";
 import { useAuthStore } from "../../store/authStore";
 import { assistantApi } from "../../lib/api";
+import { toApiLanguage, toStoreCitations } from "../../lib/mappers";
 import ArabicText from "../../components/shared/ArabicText";
 import { LiquidGlassContainer } from "../../components/ui/LiquidGlassContainer";
 import ChatBubble from "../../components/assistant/ChatBubble";
@@ -66,18 +67,25 @@ export default function AssistantScreen() {
       setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 100);
 
       try {
-        const res = await assistantApi.chat(trimmed, language, conversationId ?? undefined);
-        const { reply, citations, conversationId: newConvId } = res.data;
-        if (newConvId) setConversationId(newConvId);
-        updateLastMessage({ content: reply, citations, isLoading: false });
-      } catch {
-        // Demo fallback response
-        const demoResponse = getDemoResponse(trimmed);
+        // Lazily open a conversation, then send the turn.
+        let convId = conversationId;
+        if (!convId) {
+          const conv = await assistantApi.startConversation(toApiLanguage(language));
+          convId = conv.id;
+          setConversationId(convId);
+        }
+        const res = await assistantApi.sendMessage(convId, trimmed);
         updateLastMessage({
-          content: demoResponse.content,
-          citations: demoResponse.citations,
+          content: res.message.content ?? "",
+          citations: toStoreCitations(res.message.citations),
           isLoading: false,
         });
+      } catch (e: any) {
+        const msg =
+          e?.response?.status === 401
+            ? "انتهت الجلسة. يرجى تسجيل الدخول من جديد."
+            : "عذرًا، تعذّر الاتصال بالخادم. حاول مجددًا.";
+        updateLastMessage({ content: msg, citations: [], isLoading: false });
       } finally {
         setTyping(false);
         setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 100);
@@ -176,42 +184,6 @@ export default function AssistantScreen() {
       </KeyboardAvoidingView>
     </View>
   );
-}
-
-// Demo fallback responses
-function getDemoResponse(query: string): { content: string; citations: any[] } {
-  const lower = query.toLowerCase();
-  if (lower.includes("إخلاء") || lower.includes("خلاء") || lower.includes("إيجار") || lower.includes("بيت")) {
-    return {
-      content:
-        "حسب القانون الجزائري، المؤجر لا يمكنه إخلاءك من السكن قبل انتهاء عقد الإيجار إلا في حالات محددة. عندك الحق في الرد على إشعار الإخلاء خلال 15 يوم وطلب تأجيل التنفيذ. يمكنني مساعدتك في كتابة رد رسمي.",
-      citations: [
-        {
-          article: "المادة 507",
-          law: "القانون رقم 90-25",
-          text: "لا يجوز للمؤجر إخلاء المستأجر قبل انتهاء العقد إلا لأسباب محددة ومنصوص عليها في القانون.",
-        },
-      ],
-    };
-  }
-  if (lower.includes("عمل") || lower.includes("فصل") || lower.includes("راتب")) {
-    return {
-      content:
-        "حسب قانون العمل الجزائري رقم 90-11، لا يجوز فصلك من العمل دون إشعار مسبق مدته 30 يومًا على الأقل. إذا تم فصلك بشكل تعسفي، يحق لك المطالبة بتعويض أمام مفتشية العمل.",
-      citations: [
-        {
-          article: "المادة 73",
-          law: "القانون رقم 90-11",
-          text: "لا يجوز فصل العامل دون إخطار مسبق مدته 30 يومًا على الأقل.",
-        },
-      ],
-    };
-  }
-  return {
-    content:
-      "أنا ميزان، مساعدك القانوني في الجزائر. يمكنني مساعدتك في فهم حقوقك، تحليل الوثائق القانونية، وإنشاء رسائل رسمية. اسألني عن أي موضوع قانوني!",
-    citations: [],
-  };
 }
 
 const styles = StyleSheet.create({

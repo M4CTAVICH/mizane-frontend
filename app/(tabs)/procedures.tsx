@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   View,
   Image,
@@ -7,30 +7,26 @@ import {
   StyleSheet,
   ScrollView,
   Platform,
+  ActivityIndicator,
 } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { colors, radius, spacing, typography } from "../../constants/tokens";
-import { PROCEDURES } from "../../constants/tokens";
-import { PROCEDURE_IMAGES } from "../../constants/assets";
+import { proceduresApi } from "../../lib/api";
+import { PROCEDURE_FILTERS, PROCEDURE_META } from "../../constants/procedureMeta";
 import ArabicText from "../../components/shared/ArabicText";
 import { useDirection } from "../../lib/direction";
+import type { ProcedureDto } from "../../types/api";
 
-const FILTERS = [
-  { id: "all", labelKey: "procedures.filter.all" },
-  { id: "housing", labelKey: "procedures.filter.housing" },
-  { id: "labor", labelKey: "procedures.filter.labor" },
-  { id: "family", labelKey: "procedures.filter.family" },
-  { id: "documents", labelKey: "procedures.filter.documents" },
-] as const;
-
-// Category → the i18n key for the short tag shown on each card.
+// Category → the i18n key for the localized filter chip label.
 const CATEGORY_LABEL_KEY: Record<string, string> = {
-  labor: "procedures.filter.labor",
-  documents: "procedures.filter.documents",
-  family: "procedures.filter.family",
+  all: "procedures.filter.all",
   housing: "procedures.filter.housing",
+  labor: "procedures.filter.labor",
+  family: "procedures.filter.family",
+  documents: "procedures.filter.documents",
 };
 
 function toArabicDigits(value: string): string {
@@ -43,11 +39,28 @@ export default function ProceduresScreen() {
   const { t } = useTranslation();
   const dir = useDirection();
   const [filter, setFilter] = useState<string>("all");
+  const [catalog, setCatalog] = useState<ProcedureDto[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
+
+  const load = () => {
+    setLoading(true);
+    setError(false);
+    proceduresApi
+      .catalog()
+      .then((rows) => setCatalog(rows))
+      .catch(() => setError(true))
+      .finally(() => setLoading(false));
+  };
+
+  useEffect(() => {
+    load();
+  }, []);
 
   const filtered =
     filter === "all"
-      ? PROCEDURES
-      : PROCEDURES.filter((p) => p.category === filter);
+      ? catalog
+      : catalog.filter((p) => PROCEDURE_META[p.key]?.category === filter);
 
   return (
     <View style={styles.container}>
@@ -68,7 +81,7 @@ export default function ProceduresScreen() {
         contentContainerStyle={[styles.filters, { flexDirection: dir.row }]}
         style={styles.filterScroll}
       >
-        {FILTERS.map((f) => {
+        {PROCEDURE_FILTERS.map((f) => {
           const active = filter === f.id;
           return (
             <TouchableOpacity
@@ -82,7 +95,7 @@ export default function ProceduresScreen() {
                 weight="semibold"
                 color={active ? colors.inkBlue : colors.textMuted}
               >
-                {t(f.labelKey)}
+                {CATEGORY_LABEL_KEY[f.id] ? t(CATEGORY_LABEL_KEY[f.id]) : f.label}
               </ArabicText>
             </TouchableOpacity>
           );
@@ -92,28 +105,44 @@ export default function ProceduresScreen() {
       {/* Procedure cards */}
       <FlatList
         data={filtered}
-        keyExtractor={(item) => item.id}
+        keyExtractor={(item) => item.key}
         contentContainerStyle={styles.listContent}
         showsVerticalScrollIndicator={false}
+        ListEmptyComponent={
+          loading ? (
+            <View style={styles.stateBox}>
+              <ActivityIndicator color={colors.gold} />
+            </View>
+          ) : error ? (
+            <View style={styles.stateBox}>
+              <Ionicons name="cloud-offline-outline" size={44} color={colors.ink300} />
+              <ArabicText color={colors.textMuted}>تعذّر تحميل الإجراءات</ArabicText>
+              <TouchableOpacity onPress={load} hitSlop={8}>
+                <ArabicText weight="semibold" color={colors.gold}>{t("common.retry")}</ArabicText>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <View style={styles.stateBox}>
+              <ArabicText color={colors.textMuted}>لا توجد إجراءات</ArabicText>
+            </View>
+          )
+        }
         renderItem={({ item }) => {
+          const m = PROCEDURE_META[item.key];
+          const stepCount = item.steps?.length ?? 0;
+          const docCount = item.requiredDocTypes?.length ?? 0;
           const meta = toArabicDigits(
-            `${t("proc." + item.id + ".duration")} · ${t("procedures.steps", {
-              count: item.steps.length,
-            })} · ${t("procedures.docs", { count: item.requiredDocs.length })}`
+            `${m?.duration ?? ""} · ${t("procedures.steps", { count: stepCount })} · ${t("procedures.docs", { count: docCount })}`,
           );
           return (
             <TouchableOpacity
-              onPress={() => router.push(`/procedure/${item.id}`)}
+              onPress={() => router.push(`/procedure/${item.key}`)}
               activeOpacity={0.85}
               style={styles.card}
             >
               {/* Cover art with a fade into the card body */}
               <View style={styles.coverWrap}>
-                <Image
-                  source={PROCEDURE_IMAGES[item.id]}
-                  style={styles.cover}
-                  resizeMode="cover"
-                />
+                <Image source={m?.image} style={styles.cover} resizeMode="cover" />
                 <LinearGradient
                   colors={["rgba(5,5,6,0)", "rgba(5,5,6,0.85)"]}
                   start={{ x: 0, y: 0 }}
@@ -131,9 +160,7 @@ export default function ProceduresScreen() {
                     color={colors.gold}
                     style={styles.catTagText}
                   >
-                    {CATEGORY_LABEL_KEY[item.category]
-                      ? t(CATEGORY_LABEL_KEY[item.category])
-                      : ""}
+                    {m?.categoryLabel ?? ""}
                   </ArabicText>
                 </View>
                 <ArabicText
@@ -142,10 +169,10 @@ export default function ProceduresScreen() {
                   style={[styles.cardTitle, { textAlign: dir.textAlign }]}
                   numberOfLines={1}
                 >
-                  {t("proc." + item.id + ".title")}
+                  {(dir.isRTL ? item.title?.ar : item.title?.fr) ?? item.key}
                 </ArabicText>
                 <ArabicText color={colors.goldDeep} style={[styles.cardSub, { textAlign: dir.textAlign }]} numberOfLines={1}>
-                  {dir.isRTL ? item.labelFr : item.label}
+                  {(dir.isRTL ? item.title?.fr : item.title?.ar) ?? ""}
                 </ArabicText>
                 <ArabicText size="caption" color={colors.textMuted} style={[styles.cardMeta, { textAlign: dir.textAlign }]}>
                   {meta}
@@ -198,6 +225,7 @@ const styles = StyleSheet.create({
     gap: 14,
     paddingBottom: 120, // clear the floating glass tab bar
   },
+  stateBox: { alignItems: "center", paddingTop: spacing.xxl, gap: spacing.md },
 
   // Card
   card: {

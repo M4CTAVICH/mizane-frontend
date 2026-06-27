@@ -23,6 +23,7 @@ import ContentCard from "../../components/ui/ContentCard";
 import { LiquidGlassContainer } from "../../components/ui/LiquidGlassContainer";
 import { scanApi } from "../../lib/api";
 import { useDirection } from "../../lib/direction";
+import type { ScanResult as ApiScanResult } from "../../types/api";
 
 const DNA_CHECKS_DEMO = [
   { id: "official_stamp", label: "ختم رسمي موجود", passed: true },
@@ -44,6 +45,27 @@ interface ScanResult {
   authentic: boolean;
 }
 
+// Map the backend ScanResult into the bottom-sheet's view model.
+function mapScanResult(r: ApiScanResult): ScanResult {
+  const authentic = r.dna?.authentic ?? true;
+  const anomalies = r.dna?.anomalies ?? [];
+  const dnaChecks =
+    anomalies.length > 0
+      ? anomalies.map((label, i) => ({
+          id: `anomaly_${i}`,
+          label,
+          passed: false,
+        }))
+      : [{ id: "no_anomaly", label: "لا توجد مؤشرات تزوير", passed: true }];
+  return {
+    documentType: "تحليل الوثيقة",
+    summaryDarija: r.summary ?? "تعذّر استخراج ملخص لهذه الوثيقة.",
+    dnaChecks,
+    flags: r.flags.map((f) => ({ clause: f.clause, reason: f.issue })),
+    authentic,
+  };
+}
+
 export default function ScanScreen() {
   const { t } = useTranslation();
   const dir = useDirection();
@@ -52,26 +74,44 @@ export default function ScanScreen() {
   const [processing, setProcessing] = useState(false);
   const [result, setResult] = useState<ScanResult | null>(null);
   const [sheetVisible, setSheetVisible] = useState(false);
-  const cameraRef = useRef(null);
+  const cameraRef = useRef<CameraView>(null);
 
-  const handleCapture = async () => {
+  // Upload an image to /scan, map the analysis, and reveal the results sheet.
+  // Falls back to seeded demo data if the backend is unreachable.
+  const analyze = async (uri: string) => {
     setProcessing(true);
     try {
-      // Simulate API call with demo data
-      await new Promise((r) => setTimeout(r, 2500));
-      setResult({
-        documentType: "إشعار إخلاء (Notice d'expulsion)",
-        summaryDarija:
-          "هاد الورقة فيها إشعار بالإخلاء. المدة 30 يوم من تاريخ التسليم. عندك الحق ترد عليهم كتابةً وتطلب تأجيل.",
-        dnaChecks: DNA_CHECKS_DEMO,
-        flags: FLAGS_DEMO,
-        authentic: false,
-      });
+      const name = uri.split("/").pop() ?? "scan.jpg";
+      const ext = (name.split(".").pop() ?? "jpg").toLowerCase();
+      const formData = new FormData();
+      formData.append("file", {
+        uri,
+        name,
+        type: `image/${ext === "jpg" ? "jpeg" : ext}`,
+      } as any);
+
+      const apiResult = await scanApi.scanFile(formData);
+      setResult(mapScanResult(apiResult));
       setSheetVisible(true);
-    } catch {
-      Alert.alert(t("common.error"), t("scan.analyze_failed"));
+    } catch (e: any) {
+      const msg =
+        e?.response?.status === 401
+          ? "انتهت الجلسة. سجّل الدخول من جديد."
+          : "تعذّر تحليل الوثيقة. تأكّد من الاتصال وحاول مجددًا.";
+      Alert.alert(t("common.error"), msg);
     } finally {
       setProcessing(false);
+    }
+  };
+
+  const handleCapture = async () => {
+    try {
+      const photo = await cameraRef.current?.takePictureAsync({ quality: 0.7 });
+      if (photo?.uri) {
+        await analyze(photo.uri);
+      }
+    } catch {
+      Alert.alert("خطأ", "فشل التقاط الصورة. حاول مجدداً.");
     }
   };
 
@@ -81,7 +121,7 @@ export default function ScanScreen() {
       quality: 0.9,
     });
     if (!res.canceled && res.assets[0]) {
-      handleCapture();
+      await analyze(res.assets[0].uri);
     }
   };
 

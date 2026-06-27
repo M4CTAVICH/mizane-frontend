@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   View,
   Image,
@@ -8,6 +8,7 @@ import {
   ScrollView,
   Alert,
   Platform,
+  Linking,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
@@ -18,7 +19,7 @@ import { useVaultStore, type VaultDocument } from "../../store/vaultStore";
 import { DOC_THUMBNAILS, DOC_THUMBNAIL_FALLBACK } from "../../constants/assets";
 import ArabicText from "../../components/shared/ArabicText";
 import Button from "../../components/ui/Button";
-import { mockAnchor } from "../../lib/proof";
+import { documentsApi, proofApi } from "../../lib/api";
 import { useDirection } from "../../lib/direction";
 
 type Status = VaultDocument["status"];
@@ -66,10 +67,42 @@ export default function DocumentDetailScreen() {
   const dir = useDirection();
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
-  const { documents, updateDocument } = useVaultStore();
+  const { documents, removeDocument } = useVaultStore();
   const [anchoring, setAnchoring] = useState(false);
+  const [anchored, setAnchored] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [sha256, setSha256] = useState<string | null>(null);
+  const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
 
   const doc = documents.find((d) => d.id === id);
+
+  // Fetch the detail (short-lived download URL + content hash) and the current
+  // anchor status from the proof service.
+  useEffect(() => {
+    if (!id) return;
+    let active = true;
+    documentsApi
+      .get(id)
+      .then(async (detail) => {
+        if (!active) return;
+        setDownloadUrl(detail.downloadUrl);
+        setSha256(detail.sha256);
+        if (detail.sha256) {
+          try {
+            const v = await proofApi.verify(detail.sha256);
+            if (active) setAnchored(v.found && v.status === "ANCHORED");
+          } catch {
+            /* verify is best-effort */
+          }
+        }
+      })
+      .catch(() => {
+        /* keep showing the list data we already have */
+      });
+    return () => {
+      active = false;
+    };
+  }, [id]);
 
   if (!doc) {
     return (
@@ -87,19 +120,59 @@ export default function DocumentDetailScreen() {
   const tag = STATUS_TAG[doc.status];
   const expiry = formatDate(doc.expiresAt);
   const securedDate = formatDate(doc.createdAt);
-  const isAnchored = Boolean(doc.anchorRef);
   const heroImage = DOC_THUMBNAILS[doc.type] ?? DOC_THUMBNAIL_FALLBACK;
 
   const statusValue =
     doc.status === "valid" && expiry ? t("vault.valid_until", { date: expiry }) : t(tag.labelKey);
 
   const handleAnchor = async () => {
+    if (!sha256) {
+      Alert.alert("غير متاح", "لا يمكن تثبيت هذه الوثيقة بعد.");
+      return;
+    }
     setAnchoring(true);
-    await new Promise((r) => setTimeout(r, 1500));
-    const proof = mockAnchor(doc.id);
-    updateDocument(doc.id, { anchorRef: proof.anchorRef });
-    setAnchoring(false);
-    Alert.alert(t("vault.anchored_title"), t("vault.anchor_ref", { ref: proof.anchorRef }));
+    try {
+      await proofApi.anchor(sha256);
+      setAnchored(true);
+      Alert.alert(t("vault.anchored_title"), "تم إرسال بصمة الوثيقة للتثبيت (قيد المعالجة).");
+    } catch (e: any) {
+      Alert.alert(
+        "خطأ",
+        e?.response?.status === 401 ? "انتهت الجلسة." : "تعذّر التثبيت. حاول مجددًا.",
+      );
+    } finally {
+      setAnchoring(false);
+    }
+  };
+
+  const handleOpen = async () => {
+    if (!downloadUrl) {
+      Alert.alert("غير متاح", "رابط الوثيقة غير جاهز بعد.");
+      return;
+    }
+    await Linking.openURL(downloadUrl);
+  };
+
+  const handleDelete = () => {
+    Alert.alert("حذف الوثيقة", "هل تريد حذف هذه الوثيقة نهائيًا؟", [
+      { text: "إلغاء", style: "cancel" },
+      {
+        text: "حذف",
+        style: "destructive",
+        onPress: async () => {
+          setDeleting(true);
+          try {
+            await documentsApi.delete(doc.id);
+            removeDocument(doc.id);
+            router.back();
+          } catch {
+            Alert.alert("خطأ", "تعذّر حذف الوثيقة. حاول مجددًا.");
+          } finally {
+            setDeleting(false);
+          }
+        },
+      },
+    ]);
   };
 
   return (
@@ -145,11 +218,11 @@ export default function DocumentDetailScreen() {
             </ArabicText>
             <View style={[styles.heroMetaRow, { flexDirection: dir.row }]}>
               <ArabicText color={colors.textMuted} style={styles.heroMeta}>
-                {isAnchored && securedDate
+                {anchored && securedDate
                   ? t("vault.secured_on", { date: securedDate })
                   : t("vault.not_secured")}
               </ArabicText>
-              {isAnchored ? (
+              {anchored ? (
                 <Ionicons name="shield-checkmark" size={13} color="#5FB38A" />
               ) : null}
             </View>
@@ -178,12 +251,8 @@ export default function DocumentDetailScreen() {
         </View>
 
         {/* Actions */}
-        {isAnchored ? (
-          <PrimaryAction
-            icon="language"
-            label={t("vault.translate_doc")}
-            onPress={() => Alert.alert(t("common.soon"), t("vault.translate_soon_body"))}
-          />
+        {anchored ? (
+          <PrimaryAction icon="open-outline" label="فتح الوثيقة" onPress={handleOpen} />
         ) : (
           <PrimaryAction
             icon="shield-checkmark"
@@ -195,11 +264,22 @@ export default function DocumentDetailScreen() {
         <TouchableOpacity
           style={[styles.secondaryBtn, { flexDirection: dir.row }]}
           activeOpacity={0.85}
-          onPress={() => Alert.alert(t("common.soon"), t("vault.share_soon_body"))}
+          onPress={handleOpen}
         >
-          <Ionicons name="share-social-outline" size={18} color={colors.textPrimary} />
+          <Ionicons name="open-outline" size={18} color={colors.textPrimary} />
           <ArabicText weight="semibold" color={colors.textPrimary} style={styles.secondaryText}>
-            {t("vault.share")}
+            فتح الوثيقة
+          </ArabicText>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.secondaryBtn, { flexDirection: dir.row }]}
+          activeOpacity={0.85}
+          onPress={handleDelete}
+          disabled={deleting}
+        >
+          <Ionicons name="trash-outline" size={18} color={colors.danger} />
+          <ArabicText weight="semibold" color={colors.danger} style={styles.secondaryText}>
+            {deleting ? "جارٍ الحذف..." : "حذف الوثيقة"}
           </ArabicText>
         </TouchableOpacity>
       </ScrollView>

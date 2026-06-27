@@ -15,7 +15,7 @@ import { useTranslation } from "react-i18next";
 import { LinearGradient } from "expo-linear-gradient";
 import { ActivityIndicator } from "react-native";
 import { colors, radius, spacing, typography } from "../../constants/tokens";
-import { useAuthStore, DEMO_USER } from "../../store/authStore";
+import { useAuthStore } from "../../store/authStore";
 import ArabicText from "../../components/shared/ArabicText";
 import { useDirection } from "../../lib/direction";
 
@@ -62,17 +62,27 @@ function SubmitButton({ label, onPress, disabled = false, loading = false }: Sub
   );
 }
 
+// Normalize the local digits from the input into an E.164 Algerian number.
+// The UI shows the +213 prefix separately, so `phone` holds only the local part.
+function toE164(local: string): string {
+  return `+213${local.replace(/\D/g, "").replace(/^0/, "")}`;
+}
+
 export default function OTPScreen() {
   const router = useRouter();
   const { t } = useTranslation();
   const dir = useDirection();
-  const setUser = useAuthStore((s) => s.setUser);
+  const requestOtp = useAuthStore((s) => s.requestOtp);
+  const verifyOtp = useAuthStore((s) => s.verifyOtp);
+  const syncLanguage = useAuthStore((s) => s.syncLanguage);
+  const chosenLanguage = useAuthStore((s) => s.language);
 
   const [phone, setPhone] = useState("");
   const [otp, setOtp] = useState(["", "", "", "", "", ""]);
   const [step, setStep] = useState<"phone" | "otp">("phone");
   const [countdown, setCountdown] = useState(0);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
   const inputRefs = useRef<(TextInput | null)[]>([]);
 
   useEffect(() => {
@@ -82,10 +92,18 @@ export default function OTPScreen() {
     }
   }, [countdown]);
 
-  const handleSendOtp = () => {
-    setStep("otp");
-    setCountdown(60);
-    setTimeout(() => setOtp(["1", "2", "3", "4", "5", "6"]), 500);
+  const handleSendOtp = async () => {
+    setLoading(true);
+    setError("");
+    try {
+      await requestOtp(toE164(phone));
+      setStep("otp");
+      setCountdown(60);
+    } catch (e: any) {
+      setError(e?.response?.data?.message ?? "تعذّر إرسال الرمز، حاول مجددًا");
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleOtpChange = (val: string, idx: number) => {
@@ -97,16 +115,29 @@ export default function OTPScreen() {
 
   const handleVerify = async () => {
     setLoading(true);
-    setTimeout(async () => {
-      await setUser(DEMO_USER, "demo_jwt_token_123");
-      setLoading(false);
+    setError("");
+    try {
+      const preferred = chosenLanguage;
+      await verifyOtp(toE164(phone), otp.join(""));
+      // Persist the language picked on the previous screen (verify resets it
+      // to the freshly-created profile's default).
+      await syncLanguage(preferred);
       router.replace("/(tabs)");
-    }, 800);
+    } catch (e: any) {
+      setError(e?.response?.data?.message ?? "الرمز غير صحيح");
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleSkip = async () => {
-    await setUser(DEMO_USER, "demo_jwt_token_123");
-    router.replace("/(tabs)");
+  const handleResend = async () => {
+    setError("");
+    try {
+      await requestOtp(toE164(phone));
+      setCountdown(60);
+    } catch (e: any) {
+      setError(e?.response?.data?.message ?? "تعذّر إعادة الإرسال");
+    }
   };
 
   return (
@@ -183,6 +214,7 @@ export default function OTPScreen() {
               {step === "phone" ? (
                 <SubmitButton
                   label={t("otp.send")}
+                  loading={loading}
                   disabled={phone.trim().length < 6}
                   onPress={handleSendOtp}
                 />
@@ -196,7 +228,7 @@ export default function OTPScreen() {
                   />
                   <TouchableOpacity
                     disabled={countdown > 0}
-                    onPress={() => setCountdown(60)}
+                    onPress={handleResend}
                   >
                     <ArabicText
                       size="caption"
@@ -210,16 +242,19 @@ export default function OTPScreen() {
                   </TouchableOpacity>
                 </>
               )}
+
+              {error ? (
+                <ArabicText
+                  size="caption"
+                  color={colors.danger}
+                  style={styles.error}
+                >
+                  {error}
+                </ArabicText>
+              ) : null}
             </View>
 
             <View style={styles.spacer} />
-
-            {/* Skip (demo) */}
-            <TouchableOpacity style={styles.skip} onPress={handleSkip}>
-              <ArabicText weight="medium" color={colors.textMuted} style={styles.skipText}>
-                {t("otp.skip")}
-              </ArabicText>
-            </TouchableOpacity>
           </View>
         </SafeAreaView>
       </View>
@@ -329,8 +364,7 @@ const styles = StyleSheet.create({
   otpTextFilled: { color: colors.gold },
 
   resend: { textAlign: "center", marginTop: spacing.xs },
+  error: { textAlign: "center", marginTop: spacing.xs },
 
   spacer: { flex: 1 },
-  skip: { alignItems: "center", paddingTop: spacing.md },
-  skipText: { fontSize: 13.5 },
 });

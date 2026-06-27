@@ -24,45 +24,8 @@ interface VaultState {
   setLoading: (loading: boolean) => void;
 }
 
-// Demo documents
-export const DEMO_DOCS: VaultDocument[] = [
-  {
-    id: "doc-001",
-    type: "acte_naissance_12s",
-    name: "عقد الميلاد 12S",
-    status: "valid",
-    expiresAt: "2027-03-15",
-    anchorRef: "demo_anchor_1",
-    createdAt: "2024-01-10T10:00:00Z",
-  },
-  {
-    id: "doc-002",
-    type: "certificat_residence",
-    name: "شهادة الإقامة",
-    status: "expiring",
-    expiresAt: "2026-07-08",
-    createdAt: "2024-01-10T10:00:00Z",
-  },
-  {
-    id: "doc-003",
-    type: "carte_nationale",
-    name: "بطاقة وطنية",
-    status: "expired",
-    expiresAt: "2024-01-20",
-    createdAt: "2020-01-15T10:00:00Z",
-  },
-  {
-    id: "doc-004",
-    type: "fiche_familiale",
-    name: "الوثيقة العائلية",
-    status: "valid",
-    expiresAt: "2026-12-31",
-    createdAt: "2024-03-01T10:00:00Z",
-  },
-];
-
 export const useVaultStore = create<VaultState>((set) => ({
-  documents: DEMO_DOCS,
+  documents: [],
   isLoading: false,
 
   setDocuments: (documents) => set({ documents }),

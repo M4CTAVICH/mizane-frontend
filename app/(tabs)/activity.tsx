@@ -1,15 +1,20 @@
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   View,
   ScrollView,
   Animated,
   StyleSheet,
   Platform,
+  ActivityIndicator,
 } from "react-native";
 import { useTranslation } from "react-i18next";
 import { colors } from "../../constants/tokens";
 import ArabicText from "../../components/shared/ArabicText";
 import { useDirection } from "../../lib/direction";
+import { deadlinesApi, documentsApi, proceduresApi } from "../../lib/api";
+import { toStoreDocument } from "../../lib/mappers";
+import { PROCEDURE_META } from "../../constants/procedureMeta";
+import type { ProcedureKey } from "../../types/api";
 
 type Kind = "secured" | "reminder" | "document" | "message" | "procedure";
 
@@ -24,65 +29,58 @@ const KIND_COLOR: Record<Kind, string> = {
 interface ActivityEvent {
   id: string;
   kind: Kind;
-  titleKey: string;
-  subKey: string;
-  timeKey: string;
+  title: string;
+  sub: string;
+  time: string;
   live?: boolean;
 }
 
 interface Group {
-  labelKey: string;
+  label: string;
   events: ActivityEvent[];
 }
 
-const GROUPS: Group[] = [
-  {
-    labelKey: "activity.group.today",
-    events: [
-      {
-        id: "1",
-        kind: "secured",
-        titleKey: "activity.event.birth_anchored",
-        subKey: "activity.event.birth_anchored_sub",
-        timeKey: "activity.time.minutes_32",
-        live: true,
-      },
-      {
-        id: "2",
-        kind: "reminder",
-        titleKey: "activity.event.residence_due",
-        subKey: "activity.event.residence_due_sub",
-        timeKey: "activity.time.hours_3",
-      },
-    ],
-  },
-  {
-    labelKey: "activity.group.this_week",
-    events: [
-      {
-        id: "3",
-        kind: "document",
-        titleKey: "activity.event.family_doc_added",
-        subKey: "activity.event.family_doc_added_sub",
-        timeKey: "activity.time.yesterday",
-      },
-      {
-        id: "4",
-        kind: "message",
-        titleKey: "activity.event.labor_complaint",
-        subKey: "activity.event.labor_complaint_sub",
-        timeKey: "activity.time.two_days",
-      },
-      {
-        id: "5",
-        kind: "procedure",
-        titleKey: "activity.event.passport_started",
-        subKey: "activity.event.passport_started_sub",
-        timeKey: "activity.time.three_days",
-      },
-    ],
-  },
-];
+// An event with its absolute timestamp, before grouping by recency.
+interface DatedEvent extends Omit<ActivityEvent, "time"> {
+  at: number;
+}
+
+function toArabicDigits(value: string | number): string {
+  const map = ["٠", "١", "٢", "٣", "٤", "٥", "٦", "٧", "٨", "٩"];
+  return String(value).replace(/[0-9]/g, (d) => map[Number(d)]);
+}
+
+function relativeTime(at: number): string {
+  const mins = Math.max(0, Math.round((Date.now() - at) / 60000));
+  if (mins < 1) return "الآن";
+  if (mins < 60) return `${toArabicDigits(mins)} دقيقة`;
+  const hours = Math.round(mins / 60);
+  if (hours < 24) return `${toArabicDigits(hours)} ساعة`;
+  const days = Math.round(hours / 24);
+  if (days < 30) return `${toArabicDigits(days)} يوم`;
+  return new Date(at).toLocaleDateString("ar-DZ");
+}
+
+// Bucket events into today / this week / older, sorted newest-first.
+function buildGroups(events: DatedEvent[]): Group[] {
+  const now = Date.now();
+  const DAY = 86400000;
+  const sorted = [...events].sort((a, b) => b.at - a.at);
+  const buckets: Record<string, ActivityEvent[]> = {
+    اليوم: [],
+    "هذا الأسبوع": [],
+    أقدم: [],
+  };
+  for (const e of sorted) {
+    const age = now - e.at;
+    const label = age < DAY ? "اليوم" : age < 7 * DAY ? "هذا الأسبوع" : "أقدم";
+    const { at, ...rest } = e;
+    buckets[label].push({ ...rest, time: relativeTime(at) });
+  }
+  return Object.entries(buckets)
+    .filter(([, evs]) => evs.length > 0)
+    .map(([label, evs]) => ({ label, events: evs }));
+}
 
 /** Pulsing ring for a live timeline node. */
 function PulseRing({ color }: { color: string }) {
@@ -110,7 +108,6 @@ function PulseRing({ color }: { color: string }) {
 }
 
 function EventRow({ event, isLast }: { event: ActivityEvent; isLast: boolean }) {
-  const { t } = useTranslation();
   const dir = useDirection();
   const color = KIND_COLOR[event.kind];
   return (
@@ -118,14 +115,14 @@ function EventRow({ event, isLast }: { event: ActivityEvent; isLast: boolean }) 
       <View style={[styles.eventContent, { flexDirection: dir.row }]}>
         <View style={[styles.eventTextCol, { alignItems: dir.alignStart }]}>
           <ArabicText weight="semibold" color={colors.textPrimary} style={[styles.title, { textAlign: dir.textAlign }]} numberOfLines={1}>
-            {t(event.titleKey)}
+            {event.title}
           </ArabicText>
           <ArabicText color={colors.textMuted} style={[styles.sub, { textAlign: dir.textAlign }]} numberOfLines={1}>
-            {t(event.subKey)}
+            {event.sub}
           </ArabicText>
         </View>
         <ArabicText color={colors.textMuted} style={styles.time}>
-          {t(event.timeKey)}
+          {event.time}
         </ArabicText>
       </View>
 
@@ -141,9 +138,107 @@ function EventRow({ event, isLast }: { event: ActivityEvent; isLast: boolean }) 
   );
 }
 
+const DOC_STATUS_AR: Record<string, string> = {
+  valid: "سارية المفعول",
+  expiring: "تنتهي قريبًا",
+  expired: "منتهية الصلاحية",
+};
+
 export default function ActivityScreen() {
   const { t } = useTranslation();
   const dir = useDirection();
+  const [groups, setGroups] = useState<Group[]>([]);
+  const [count, setCount] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    (async () => {
+      setError(false);
+      const [docsRes, instRes, dlRes] = await Promise.allSettled([
+        documentsApi.list(),
+        proceduresApi.myInstances(),
+        deadlinesApi.list(),
+      ]);
+      if (!active) return;
+
+      // If everything failed, surface an error; otherwise show what we got.
+      if (
+        docsRes.status === "rejected" &&
+        instRes.status === "rejected" &&
+        dlRes.status === "rejected"
+      ) {
+        setError(true);
+        setLoading(false);
+        return;
+      }
+
+      const events: DatedEvent[] = [];
+
+      if (docsRes.status === "fulfilled") {
+        for (const raw of docsRes.value) {
+          const d = toStoreDocument(raw);
+          const at = new Date(d.createdAt).getTime();
+          events.push({
+            id: `doc-${d.id}`,
+            kind: "document",
+            title: `تمت إضافة ${d.name}`,
+            sub: DOC_STATUS_AR[d.status] ?? "محفوظة في الخزينة",
+            at,
+          });
+          if (d.status === "expiring" || d.status === "expired") {
+            events.push({
+              id: `exp-${d.id}`,
+              kind: "reminder",
+              title: `موعد ${d.name}`,
+              sub:
+                d.status === "expired"
+                  ? "انتهت الصلاحية"
+                  : "تقترب من انتهاء الصلاحية",
+              at,
+            });
+          }
+        }
+      }
+
+      if (instRes.status === "fulfilled") {
+        for (const inst of instRes.value) {
+          const titleAr =
+            inst.procedure.title?.ar ??
+            PROCEDURE_META[inst.procedure.key as ProcedureKey]?.categoryLabel ??
+            "إجراء";
+          events.push({
+            id: `inst-${inst.id}`,
+            kind: "procedure",
+            title: `بدأت إجراء ${titleAr}`,
+            sub: inst.readiness.ready ? "جاهز للمتابعة" : "بانتظار وثائق",
+            at: new Date(inst.startedAt).getTime(),
+          });
+        }
+      }
+
+      if (dlRes.status === "fulfilled") {
+        for (const dl of dlRes.value) {
+          events.push({
+            id: `dl-${dl.id}`,
+            kind: "reminder",
+            title: dl.label ?? "موعد قانوني",
+            sub: `آخر أجل: ${dl.dueDate}`,
+            at: new Date(dl.createdAt).getTime(),
+          });
+        }
+      }
+
+      setCount(events.length);
+      setGroups(buildGroups(events));
+      setLoading(false);
+    })();
+    return () => {
+      active = false;
+    };
+  }, []);
+
   return (
     <View style={styles.container}>
       <ScrollView
@@ -157,24 +252,37 @@ export default function ActivityScreen() {
             {t("activity.title")}
           </ArabicText>
           <ArabicText color={colors.textMuted} style={styles.subtitle}>
-            {t("activity.summary")}
+            {loading
+              ? t("common.loading")
+              : error
+                ? "تعذّر تحميل النشاط"
+                : `${toArabicDigits(count)} أحداث`}
           </ArabicText>
         </View>
 
-        {/* Timeline sections */}
-        {GROUPS.map((group) => (
-          <View key={group.labelKey} style={styles.section}>
-            <ArabicText color={colors.textMuted} style={[styles.eyebrow, { textAlign: dir.textAlign }]}>
-              {t(group.labelKey)}
-            </ArabicText>
-            <View style={styles.sectionBody}>
-              <View style={styles.rail} />
-              {group.events.map((e, i) => (
-                <EventRow key={e.id} event={e} isLast={i === group.events.length - 1} />
-              ))}
-            </View>
+        {loading ? (
+          <View style={styles.stateBox}>
+            <ActivityIndicator color={colors.gold} />
           </View>
-        ))}
+        ) : !error && groups.length === 0 ? (
+          <View style={styles.stateBox}>
+            <ArabicText color={colors.textMuted}>{t("activity.empty")}</ArabicText>
+          </View>
+        ) : (
+          groups.map((group) => (
+            <View key={group.label} style={styles.section}>
+              <ArabicText color={colors.textMuted} style={[styles.eyebrow, { textAlign: dir.textAlign }]}>
+                {group.label}
+              </ArabicText>
+              <View style={styles.sectionBody}>
+                <View style={styles.rail} />
+                {group.events.map((e, i) => (
+                  <EventRow key={e.id} event={e} isLast={i === group.events.length - 1} />
+                ))}
+              </View>
+            </View>
+          ))
+        )}
       </ScrollView>
     </View>
   );
@@ -187,6 +295,7 @@ const RAIL_RIGHT = NODE_SIZE / 2 - 0.5;
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "transparent" },
+  stateBox: { alignItems: "center", paddingTop: 80, gap: 16 },
   scroll: { flex: 1 },
   scrollContent: {
     paddingHorizontal: 24,

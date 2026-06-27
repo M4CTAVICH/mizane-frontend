@@ -12,9 +12,13 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
 import { useLocalSearchParams, useRouter } from "expo-router";
+import * as Linking from "expo-linking";
 import { colors, radius, shadow, spacing, typography, textScale } from "../../constants/tokens";
 import { TEMPLATES } from "../../constants/tokens";
 import { useAuthStore } from "../../store/authStore";
+import { lettersApi, proofApi } from "../../lib/api";
+import { toApiTemplateKey, toStoreCitations } from "../../lib/mappers";
+import type { Citation as StoreCitation } from "../../store/assistantStore";
 import ArabicText from "../../components/shared/ArabicText";
 import Button from "../../components/ui/Button";
 import ContentCard from "../../components/ui/ContentCard";
@@ -34,43 +38,6 @@ function GlassHeader({ children }: { children: React.ReactNode }) {
   );
 }
 
-const DEMO_LETTER = `السيد المحترم / السيدة المحترمة،
-
-رئيس مفتشية العمل لولاية وهران
-
-الموضوع: **شكوى بشأن الفصل التعسفي من العمل**
-
-أنا الموقع أدناه، **أمل حميدي**، المقيمة بحي 20 أوت، وهران، رقم البطاقة الوطنية: 123456789012345678، أتقدم بهذه الشكوى ضد مؤسسة [اسم المؤسسة] بسبب فصلي التعسفي من العمل بتاريخ [التاريخ].
-
-**عرض الوقائع:**
-تربطني بالمؤسسة عقد عمل مبرم بتاريخ [تاريخ بداية العقد]. وبتاريخ [تاريخ الفصل]، أُبلغت بالفصل دون إشعار مسبق يستوفي الشروط القانونية المنصوص عليها في القانون رقم 90-11.
-
-**المطالب:**
-1. إعادة الإدماج في منصب العمل، أو
-2. دفع التعويضات المستحقة وفق القانون
-
-أرجو اتخاذ الإجراءات اللازمة وفق صلاحياتكم.
-
-مع التحية.
-
-[توقيع]
-
-أمل حميدي
-التاريخ: ${new Date().toLocaleDateString("ar-DZ")}`;
-
-const DEMO_CITATIONS = [
-  {
-    article: "المادة 73",
-    law: "القانون رقم 90-11",
-    text: "لا يجوز فصل العامل دون إخطار مسبق مدته 30 يومًا على الأقل.",
-  },
-  {
-    article: "المادة 81",
-    law: "القانون رقم 90-11",
-    text: "يحق للعامل المفصول تعسفياً المطالبة بإعادة الإدماج أو التعويض.",
-  },
-];
-
 export default function LetterScreen() {
   const { t } = useTranslation();
   const dir = useDirection();
@@ -78,19 +45,72 @@ export default function LetterScreen() {
   const router = useRouter();
   const user = useAuthStore((s) => s.user);
 
-  const templateInfo = TEMPLATES.find((t) => t.id === template) ?? TEMPLATES[0];
+  const templateInfo = TEMPLATES.find((tpl) => tpl.id === template) ?? TEMPLATES[0];
 
   const [step, setStep] = useState<"select" | "form" | "preview">("select");
   const [situation, setSituation] = useState("");
   const [generating, setGenerating] = useState(false);
-  const [letterContent, setLetterContent] = useState(DEMO_LETTER);
+  const [letterContent, setLetterContent] = useState("");
+  const [letterId, setLetterId] = useState<string | null>(null);
+  const [letterSha, setLetterSha] = useState<string | null>(null);
+  const [citations, setCitations] = useState<StoreCitation[]>([]);
+  const [downloading, setDownloading] = useState(false);
   const [selectedTemplate, setSelectedTemplate] = useState(templateInfo);
 
   const handleGenerate = async () => {
+    if (!situation.trim()) {
+      Alert.alert("الحالة مطلوبة", "اكتب وصفًا موجزًا لحالتك أولاً.");
+      return;
+    }
     setGenerating(true);
-    await new Promise((r) => setTimeout(r, 2000));
-    setGenerating(false);
-    setStep("preview");
+    try {
+      const result = await lettersApi.generate({
+        templateKey: toApiTemplateKey(selectedTemplate.id),
+        situation: situation.trim(),
+      });
+      setLetterContent(result.content);
+      setLetterId(result.id);
+      setLetterSha(result.sha256);
+      setCitations(toStoreCitations(result.citations as any));
+      setStep("preview");
+    } catch (e: any) {
+      const msg =
+        e?.response?.status === 401
+          ? "انتهت الجلسة. سجّل الدخول من جديد."
+          : "تعذّر توليد الرسالة. تأكّد من الاتصال وحاول مجددًا.";
+      Alert.alert("خطأ", msg);
+    } finally {
+      setGenerating(false);
+    }
+  };
+
+  const handleDownloadPdf = async () => {
+    if (!letterId) {
+      Alert.alert("قريباً", "ولّد الرسالة أولاً لتحميل PDF.");
+      return;
+    }
+    setDownloading(true);
+    try {
+      const { downloadUrl } = await lettersApi.pdf(letterId);
+      await Linking.openURL(downloadUrl);
+    } catch {
+      Alert.alert("خطأ", "تعذّر إنشاء ملف PDF. حاول مجدداً.");
+    } finally {
+      setDownloading(false);
+    }
+  };
+
+  const handleAnchor = async () => {
+    if (!letterSha) {
+      Alert.alert("قريباً", "ولّد الرسالة أولاً لتثبيت الإثبات.");
+      return;
+    }
+    try {
+      await proofApi.anchor(letterSha);
+      Alert.alert("تم", "تم إرسال الرسالة للتثبيت (قيد المعالجة).");
+    } catch {
+      Alert.alert("خطأ", "تعذّر تثبيت الإثبات. حاول مجدداً.");
+    }
   };
 
   if (step === "select") {
@@ -163,19 +183,19 @@ export default function LetterScreen() {
             <View style={[styles.dataRow, { flexDirection: dir.row }]}>
               <ArabicText size="caption" color={colors.textMuted}>{t("letter.field_name")}</ArabicText>
               <ArabicText size="caption" weight="medium" color={colors.textPrimary}>
-                {user?.name ?? "أمل حميدي"}
+                {user?.name || "—"}
               </ArabicText>
             </View>
             <View style={[styles.dataRow, styles.dataRowBorder, { flexDirection: dir.row }]}>
               <ArabicText size="caption" color={colors.textMuted}>{t("letter.field_nin")}</ArabicText>
               <ArabicText size="caption" weight="medium" color={colors.textPrimary} style={{ fontFamily: typography.fontMono }}>
-                {user?.nin ?? "123456789012345678"}
+                {user?.nin || "—"}
               </ArabicText>
             </View>
             <View style={[styles.dataRow, styles.dataRowBorder, { flexDirection: dir.row }]}>
-              <ArabicText size="caption" color={colors.textMuted}>{t("letter.field_address")}</ArabicText>
-              <ArabicText size="caption" weight="medium" color={colors.textPrimary}>
-                {user?.address ?? "حي 20 أوت، وهران"}
+              <ArabicText size="caption" color={colors.textMuted}>الهاتف:</ArabicText>
+              <ArabicText size="caption" weight="medium" color={colors.textPrimary} style={{ fontFamily: typography.fontMono }}>
+                {user?.phone || "—"}
               </ArabicText>
             </View>
           </ContentCard>
@@ -237,7 +257,7 @@ export default function LetterScreen() {
               {new Date().toLocaleDateString("ar-DZ")}
             </ArabicText>
             <ArabicText weight="semibold" color={colors.textPrimary}>
-              {user?.name ?? "أمل حميدي"}
+              {user?.name || "—"}
             </ArabicText>
           </View>
           {/* Letter body */}
@@ -250,21 +270,23 @@ export default function LetterScreen() {
         </ContentCard>
 
         {/* Citations */}
-        <View style={styles.citationsSection}>
-          <ArabicText weight="medium" color={colors.textSecondary}>
-            {t("letter.legal_sources")}
-          </ArabicText>
-          {DEMO_CITATIONS.map((c, idx) => (
-            <CitationCard key={idx} citation={c} />
-          ))}
-        </View>
+        {citations.length > 0 && (
+          <View style={styles.citationsSection}>
+            <ArabicText weight="medium" color={colors.textSecondary}>
+              {t("letter.legal_sources")}
+            </ArabicText>
+            {citations.map((c, idx) => (
+              <CitationCard key={idx} citation={c} />
+            ))}
+          </View>
+        )}
 
         {/* Actions */}
         <View style={styles.actions}>
-          <Button variant="primary" onPress={() => Alert.alert(t("common.soon"), t("letter.pdf_soon_body"))}>
-            {t("letter.download_pdf")}
+          <Button variant="primary" onPress={handleDownloadPdf} disabled={downloading}>
+            {downloading ? "جارٍ التحميل..." : t("letter.download_pdf")}
           </Button>
-          <Button variant="secondary" onPress={() => Alert.alert(t("common.soon"), t("letter.anchor_soon_body"))}>
+          <Button variant="secondary" onPress={handleAnchor}>
             {t("letter.anchor")}
           </Button>
           <Button variant="ghost" onPress={() => router.push("/(tabs)")}>

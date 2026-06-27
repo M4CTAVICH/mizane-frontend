@@ -1,22 +1,16 @@
 import CryptoJS from "crypto-js";
-import { api } from "./api";
+import { proofApi } from "./api";
+import type { AnchorResponse } from "../types/api";
 
 export async function anchorDocument(
-  fileContent: ArrayBuffer,
-  documentId: string
-): Promise<{ anchorRef: string; verificationUrl: string; timestamp: string }> {
+  fileContent: ArrayBuffer
+): Promise<AnchorResponse> {
   const wordArray = CryptoJS.lib.WordArray.create(
     Array.from(new Uint8Array(fileContent))
   );
-  const hash = CryptoJS.SHA256(wordArray).toString();
-
-  const response = await api.post("/proof/anchor", {
-    hash,
-    documentId,
-    timestamp: new Date().toISOString(),
-  });
-
-  return response.data;
+  const sha256 = CryptoJS.SHA256(wordArray).toString();
+  // Backend accepts only the 64-char hex hash; it queues anchoring async.
+  return proofApi.anchor(sha256);
 }
 
 export function verifyDocument(

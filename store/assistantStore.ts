@@ -26,30 +26,6 @@ interface AssistantState {
   clearMessages: () => void;
 }
 
-// Demo conversation
-export const DEMO_MESSAGES: Message[] = [
-  {
-    id: "demo-1",
-    role: "user",
-    content: "وصلني ورق إخلاء، شنو نعمل؟",
-    timestamp: new Date(Date.now() - 60000 * 5),
-  },
-  {
-    id: "demo-2",
-    role: "assistant",
-    content:
-      "وصلتك ورقة إخلاء؟ خاصك تعرف حقوقك أولاً.\n\nحسب القانون الجزائري رقم 90-25 المتعلق بالإيجار، المؤجر لا يمكنه إخلاءك إلا في حالات محددة جداً، ومن بينها:\n\n• عدم دفع الإيجار بعد إنذار رسمي\n• انتهاء العقد وعدم التجديد\n• الاستخدام مخالف لشروط العقد\n\nعندك الحق في الرد على هذا الإشعار خلال 15 يومًا. يمكنني مساعدتك في كتابة رد رسمي.",
-    citations: [
-      {
-        article: "المادة 507",
-        law: "القانون رقم 90-25",
-        text: "لا يجوز للمؤجر إخلاء المستأجر قبل انتهاء العقد إلا لأسباب محددة...",
-      },
-    ],
-    timestamp: new Date(Date.now() - 60000 * 4),
-  },
-];
-
 export const useAssistantStore = create<AssistantState>((set) => ({
   messages: [],
   conversationId: null,

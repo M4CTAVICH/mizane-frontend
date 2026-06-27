@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import {
   View,
   Text,
@@ -8,15 +8,25 @@ import {
   Platform,
   TextInput,
   ImageBackground,
+  ActivityIndicator,
+  Alert,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
+import * as DocumentPicker from "expo-document-picker";
 import { colors, spacing, radius, typography, textScale } from "../../constants/tokens";
+import { DocumentType as DOC_TOKENS, type DocumentTypeKey } from "../../constants/tokens";
 import { useVaultStore } from "../../store/vaultStore";
+import { documentsApi } from "../../lib/api";
+import { toApiDocType, toStoreDocument } from "../../lib/mappers";
 import { VAULT_HERO_IMAGE } from "../../constants/assets";
 import ArabicText from "../../components/shared/ArabicText";
 import { LiquidGlassContainer } from "../../components/ui/LiquidGlassContainer";
+import BottomSheet from "../../components/ui/BottomSheet";
 import DocumentCard from "../../components/vault/DocumentCard";
+
+type PickedFile = { uri: string; name: string; mimeType: string };
+const DOC_TYPE_KEYS = Object.keys(DOC_TOKENS) as DocumentTypeKey[];
 
 // Western digits → Arabic-Indic, so metrics read natively in the RTL layout.
 function toArabicDigits(value: number | string): string {
@@ -42,7 +52,71 @@ function SummaryTag({ count, label, color }: SummaryTagProps) {
 
 export default function VaultScreen() {
   const documents = useVaultStore((s) => s.documents);
+  const setDocuments = useVaultStore((s) => s.setDocuments);
   const [search, setSearch] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
+  const [picked, setPicked] = useState<PickedFile | null>(null);
+  const [typeSheet, setTypeSheet] = useState(false);
+  const [uploading, setUploading] = useState(false);
+
+  const load = useCallback(async () => {
+    setError(false);
+    try {
+      const docs = await documentsApi.list();
+      setDocuments(docs.map(toStoreDocument));
+    } catch {
+      setError(true);
+    } finally {
+      setLoading(false);
+    }
+  }, [setDocuments]);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  // Pick a file, then ask for its type before uploading.
+  const handleAdd = async () => {
+    const res = await DocumentPicker.getDocumentAsync({
+      type: ["application/pdf", "image/*"],
+      copyToCacheDirectory: true,
+    });
+    if (res.canceled || !res.assets?.[0]) return;
+    const a = res.assets[0];
+    setPicked({
+      uri: a.uri,
+      name: a.name ?? "document",
+      mimeType: a.mimeType ?? "application/octet-stream",
+    });
+    setTypeSheet(true);
+  };
+
+  const handleUpload = async (typeKey: DocumentTypeKey) => {
+    if (!picked) return;
+    setUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", {
+        uri: picked.uri,
+        name: picked.name,
+        type: picked.mimeType,
+      } as any);
+      formData.append("type", toApiDocType(typeKey));
+      await documentsApi.upload(formData);
+      setTypeSheet(false);
+      setPicked(null);
+      await load();
+    } catch (e: any) {
+      const msg =
+        e?.response?.status === 401
+          ? "انتهت الجلسة. سجّل الدخول من جديد."
+          : "تعذّر رفع الوثيقة. حاول مجددًا.";
+      Alert.alert("خطأ", msg);
+    } finally {
+      setUploading(false);
+    }
+  };
 
   const filtered = documents.filter(
     (d) =>
@@ -124,7 +198,7 @@ export default function VaultScreen() {
       {/* ── Header (title + gold add action) ─────────────────────── */}
       <View style={styles.headerWrap}>
         <View style={styles.headerRow}>
-          <TouchableOpacity style={styles.addBtn} activeOpacity={0.85}>
+          <TouchableOpacity style={styles.addBtn} activeOpacity={0.85} onPress={handleAdd}>
             <LinearGradient
               colors={[colors.goldGradTop, colors.goldGradBottom]}
               start={{ x: 0.5, y: 0 }}
@@ -155,15 +229,73 @@ export default function VaultScreen() {
         showsVerticalScrollIndicator={false}
         ListHeaderComponent={listHeader}
         renderItem={({ item }) => <DocumentCard document={item} />}
+        refreshing={loading && documents.length > 0}
+        onRefresh={load}
         ListEmptyComponent={
-          <View style={styles.emptyState}>
-            <Ionicons name="folder-open-outline" size={48} color={colors.ink300} />
-            <ArabicText color={colors.textMuted} style={{ textAlign: "center" }}>
-              لا توجد وثائق. ابدأ بإضافة وثيقة.
-            </ArabicText>
-          </View>
+          loading ? (
+            <View style={styles.emptyState}>
+              <ActivityIndicator color={colors.gold} />
+            </View>
+          ) : error ? (
+            <View style={styles.emptyState}>
+              <Ionicons name="cloud-offline-outline" size={48} color={colors.ink300} />
+              <ArabicText color={colors.textMuted} style={{ textAlign: "center" }}>
+                تعذّر تحميل الوثائق
+              </ArabicText>
+              <TouchableOpacity onPress={load} hitSlop={8}>
+                <ArabicText weight="semibold" color={colors.gold}>إعادة المحاولة</ArabicText>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <View style={styles.emptyState}>
+              <Ionicons name="folder-open-outline" size={48} color={colors.ink300} />
+              <ArabicText color={colors.textMuted} style={{ textAlign: "center" }}>
+                لا توجد وثائق. ابدأ بإضافة وثيقة.
+              </ArabicText>
+            </View>
+          )
         }
       />
+
+      {/* Document-type picker shown after a file is selected */}
+      <BottomSheet
+        visible={typeSheet}
+        onClose={() => {
+          if (!uploading) {
+            setTypeSheet(false);
+            setPicked(null);
+          }
+        }}
+        title="نوع الوثيقة"
+        maxHeight={560}
+      >
+        {uploading ? (
+          <View style={styles.uploadingBox}>
+            <ActivityIndicator color={colors.gold} />
+            <ArabicText color={colors.textMuted}>جارٍ رفع الوثيقة...</ArabicText>
+          </View>
+        ) : (
+          <View style={styles.typeList}>
+            {DOC_TYPE_KEYS.map((key) => (
+              <TouchableOpacity
+                key={key}
+                style={styles.typeRow}
+                activeOpacity={0.8}
+                onPress={() => handleUpload(key)}
+              >
+                <Ionicons
+                  name={DOC_TOKENS[key].icon as any}
+                  size={20}
+                  color={colors.gold}
+                />
+                <ArabicText weight="medium" color={colors.textPrimary} style={styles.typeLabel}>
+                  {DOC_TOKENS[key].label}
+                </ArabicText>
+              </TouchableOpacity>
+            ))}
+          </View>
+        )}
+      </BottomSheet>
     </View>
   );
 }
@@ -269,4 +401,20 @@ const styles = StyleSheet.create({
     paddingTop: spacing.xxl,
     gap: spacing.md,
   },
+  uploadingBox: {
+    alignItems: "center",
+    gap: spacing.md,
+    paddingVertical: spacing.xl,
+  },
+  typeList: { gap: spacing.xs, paddingBottom: spacing.md },
+  typeRow: {
+    flexDirection: "row-reverse",
+    alignItems: "center",
+    gap: spacing.md,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.sm,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.cardBorder,
+  },
+  typeLabel: { fontSize: 16, flex: 1, textAlign: "right" },
 });

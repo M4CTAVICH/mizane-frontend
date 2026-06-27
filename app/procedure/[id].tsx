@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   View,
   TouchableOpacity,
@@ -7,39 +7,106 @@ import {
   ScrollView,
   Alert,
   TextInput,
+  ActivityIndicator,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { colors, radius, spacing, typography } from "../../constants/tokens";
-import { PROCEDURES, DocumentType } from "../../constants/tokens";
+import { DocumentType } from "../../constants/tokens";
+import { PROCEDURE_META } from "../../constants/procedureMeta";
 import { useVaultStore } from "../../store/vaultStore";
+import { proceduresApi } from "../../lib/api";
+import { toAppDocType } from "../../lib/mappers";
 import ArabicText from "../../components/shared/ArabicText";
 import Button from "../../components/ui/Button";
 import ContentCard from "../../components/ui/ContentCard";
 import { LiquidGlassContainer } from "../../components/ui/LiquidGlassContainer";
+import type { ProcedureDto, ProcedureKey } from "../../types/api";
 
 export default function ProcedureDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const documents = useVaultStore((s) => s.documents);
 
-  const procedure = PROCEDURES.find((p) => p.id === id) ?? PROCEDURES[0];
+  const key = id as ProcedureKey;
+  const meta = PROCEDURE_META[key];
+  const [procedure, setProcedure] = useState<ProcedureDto | null>(null);
+  const [loading, setLoading] = useState(true);
   const [currentStep, setCurrentStep] = useState(0);
   const [eventDate, setEventDate] = useState("");
   const [deadline, setDeadline] = useState<string | null>(null);
+  const [calcLoading, setCalcLoading] = useState(false);
+  const [starting, setStarting] = useState(false);
 
-  const handleCalculateDeadline = () => {
-    if (!eventDate || !procedure.deadlines.length) return;
-    const base = new Date(eventDate);
-    const days = procedure.deadlines[0].days;
-    base.setDate(base.getDate() + days);
-    setDeadline(base.toLocaleDateString("ar-DZ"));
+  useEffect(() => {
+    let active = true;
+    proceduresApi
+      .catalog()
+      .then((rows) => {
+        if (active) setProcedure(rows.find((p) => p.key === key) ?? null);
+      })
+      .catch(() => {})
+      .finally(() => active && setLoading(false));
+    return () => {
+      active = false;
+    };
+  }, [key]);
+
+  const steps = procedure?.steps ?? [];
+  const requiredDocs = (procedure?.requiredDocTypes ?? []).map(toAppDocType);
+
+  const handleCalculateDeadline = async () => {
+    if (!eventDate || !meta?.noticeType) return;
+    setCalcLoading(true);
+    try {
+      const res = await proceduresApi.deadlineCalc({
+        noticeType: meta.noticeType,
+        noticeDate: eventDate,
+      });
+      setDeadline(new Date(res.dueDate).toLocaleDateString("ar-DZ"));
+    } catch {
+      Alert.alert("خطأ", "تعذّر حساب الموعد. تحقّق من التاريخ (YYYY-MM-DD).");
+    } finally {
+      setCalcLoading(false);
+    }
   };
 
-  const stepDocs = procedure.requiredDocs.map((docType) => {
+  const handleStart = async () => {
+    setStarting(true);
+    try {
+      await proceduresApi.start(key);
+      Alert.alert("تم", "تم بدء الإجراء وتتبّعه في حسابك.");
+    } catch (e: any) {
+      Alert.alert(
+        "خطأ",
+        e?.response?.status === 401 ? "انتهت الجلسة." : "تعذّر بدء الإجراء.",
+      );
+    } finally {
+      setStarting(false);
+    }
+  };
+
+  const stepDocs = requiredDocs.map((docType) => {
     const found = documents.find((d) => d.type === docType);
     return { type: docType, inVault: !!found, doc: found };
   });
+
+  if (loading) {
+    return (
+      <SafeAreaView style={[styles.container, styles.centered]}>
+        <ActivityIndicator color={colors.gold} />
+      </SafeAreaView>
+    );
+  }
+
+  if (!procedure) {
+    return (
+      <SafeAreaView style={[styles.container, styles.centered]}>
+        <ArabicText color={colors.textMuted}>الإجراء غير موجود</ArabicText>
+        <Button variant="ghost" onPress={() => router.back()}>رجوع</Button>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container}>
@@ -55,7 +122,7 @@ export default function ProcedureDetailScreen() {
               <Ionicons name="arrow-forward" size={22} color={colors.textPrimary} />
             </TouchableOpacity>
             <ArabicText weight="semibold" color={colors.textPrimary} numberOfLines={1}>
-              {procedure.label}
+              {procedure.title?.ar ?? key}
             </ArabicText>
             <TouchableOpacity style={styles.headerBtn}>
               <Ionicons name="ellipsis-horizontal" size={22} color={colors.gold} />
@@ -71,10 +138,10 @@ export default function ProcedureDetailScreen() {
         {/* Progress stepper */}
         <ContentCard>
           <ArabicText size="caption" weight="medium" color={colors.textMuted} style={{ textAlign: "center", marginBottom: spacing.md }}>
-            الخطوة {currentStep + 1} من {procedure.steps.length}
+            الخطوة {currentStep + 1} من {steps.length}
           </ArabicText>
           <View style={styles.stepper}>
-            {procedure.steps.map((step, idx) => (
+            {steps.map((step, idx) => (
               <React.Fragment key={idx}>
                 <TouchableOpacity
                   style={styles.stepItem}
@@ -100,7 +167,7 @@ export default function ProcedureDetailScreen() {
                     )}
                   </View>
                 </TouchableOpacity>
-                {idx < procedure.steps.length - 1 && (
+                {idx < steps.length - 1 && (
                   <View
                     style={[
                       styles.stepLine,
@@ -116,8 +183,13 @@ export default function ProcedureDetailScreen() {
         {/* Current step content */}
         <ContentCard>
           <ArabicText size="heading" weight="semibold" color={colors.textPrimary}>
-            {procedure.steps[currentStep]}
+            {steps[currentStep]?.title?.ar ?? ""}
           </ArabicText>
+          {steps[currentStep]?.description?.ar ? (
+            <ArabicText color={colors.textSecondary} style={{ textAlign: "right", marginTop: spacing.sm, lineHeight: 24 }}>
+              {steps[currentStep].description.ar}
+            </ArabicText>
+          ) : null}
 
           {/* Required documents */}
           <ArabicText weight="medium" color={colors.textSecondary} style={styles.sectionLabel}>
@@ -162,16 +234,16 @@ export default function ProcedureDetailScreen() {
         </ContentCard>
 
         {/* Deadline calculator */}
-        {procedure.deadlines.length > 0 && (
+        {meta?.noticeType && (
           <ContentCard>
             <View style={styles.sectionHeader}>
               <Ionicons name="calendar-outline" size={18} color={colors.gold} />
               <ArabicText weight="semibold" color={colors.textPrimary}>
-                {procedure.deadlines[0].name}
+                حساب المهلة القانونية
               </ArabicText>
             </View>
             <ArabicText size="caption" color={colors.textMuted}>
-              المهلة: {procedure.deadlines[0].days} يومًا من تاريخ الحدث
+              أدخل تاريخ الإشعار لحساب آخر أجل للرد
             </ArabicText>
             <TextInput
               style={styles.dateInput}
@@ -182,7 +254,13 @@ export default function ProcedureDetailScreen() {
               keyboardType="numbers-and-punctuation"
               textAlign="center"
             />
-            <Button variant="secondary" size="sm" onPress={handleCalculateDeadline} fullWidth={false}>
+            <Button
+              variant="secondary"
+              size="sm"
+              onPress={handleCalculateDeadline}
+              fullWidth={false}
+              loading={calcLoading}
+            >
               احسب الموعد النهائي
             </Button>
             {deadline && (
@@ -198,7 +276,7 @@ export default function ProcedureDetailScreen() {
 
         {/* Navigation buttons */}
         <View style={styles.navButtons}>
-          {currentStep < procedure.steps.length - 1 ? (
+          {currentStep < steps.length - 1 ? (
             <Button
               variant="primary"
               onPress={() => setCurrentStep((s) => s + 1)}
@@ -206,11 +284,8 @@ export default function ProcedureDetailScreen() {
               الخطوة التالية →
             </Button>
           ) : (
-            <Button
-              variant="primary"
-              onPress={() => Alert.alert("مبروك!", "أكملت جميع الخطوات.")}
-            >
-              إتمام الإجراء ✓
+            <Button variant="primary" onPress={handleStart} loading={starting}>
+              {starting ? "جارٍ البدء..." : "ابدأ تتبّع الإجراء ✓"}
             </Button>
           )}
           {currentStep > 0 && (
@@ -229,6 +304,7 @@ export default function ProcedureDetailScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "transparent" },
+  centered: { alignItems: "center", justifyContent: "center", gap: spacing.md },
 
   // Glass header
   headerWrap: {
